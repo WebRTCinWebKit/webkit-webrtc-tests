@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Buttons</title>
+
+<script>
+
+var s;
+var pc;
+
+window.onload = function () {
+    var options = { "video": true, "audio": true };
+
+    document.querySelector("#promise_based").onclick = function (evt) {
+        console.log("has navigator.mediaDevices: " + !!navigator.mediaDevices);
+
+        var p = navigator.mediaDevices.getUserMedia(options);
+
+        console.log("p: " + p);
+
+        p.then(function (stream) {
+            console.log("Promise resolved");
+            console.log("stream: " + stream);
+            s = stream;
+        }
+        /*, function (error) {
+            console.log("Promise rejected");
+            console.log("error: " + error);
+        }*/)
+        .catch(function (error) {
+            console.log("Promise catch");
+            console.log("error: " + error);
+        });
+    };
+
+    document.querySelector("#legacy").onclick = function (evt) {
+        navigator.webkitGetUserMedia(options, function (stream) {
+            console.log("success callback");
+            console.log("stream: " + stream);
+            s = stream;
+        },
+        function (error) {
+            console.log("error callback");
+            console.log("error: " + error);
+        });
+    };
+
+    document.querySelector("#create_pc").onclick = function (evt) {
+        var configuration = { "iceServers": [{ "urls": "stun:132.177.123.6" }] };
+        pc = new webkitRTCPeerConnection(configuration);
+    };
+
+    document.querySelector("#create_pc2").onclick = function (evt) {
+        var configuration = { "iceServers": [{ "urls": "stun:132.177.123.6" }] };
+        pc = new webkitRTCPeerConnection(configuration);
+
+        pc.onicecandidate = function (evt) {
+            var candidate = evt.candidate;
+            console.log("candidate: " + candidate)
+            if (candidate)
+                console.log("candidate.candidate: " + candidate.candidate);
+        };
+
+        var track = new AudioStreamTrack();
+        pc.addTrack(track, "not used");
+
+        pc.createOffer().then(function (offer) {
+            console.log("got offer");
+            console.log("offer.sdp: " + offer.sdp);
+            return pc.setLocalDescription(offer);
+        })
+        .then(function () {
+            console.log("offer set");
+        })
+        .catch(function () {
+            console.log("catch!");
+        });
+    };
+
+    document.querySelector("#add_bad_candidate").onclick = function (evt) {
+        if (!pc)
+            console.log("Need global pc variable");
+
+        pc.addIceCandidate(new RTCIceCandidate({ "candidate": "bad", "sdpMLineIndex": 0 })).then(function () {
+            console.log("addIceCandidate: resolved");
+        })
+        .catch(function (error) {
+            console.log("addIceCandidate: catch error: " + error);
+        });
+    };
+
+    document.querySelector("#add_candidate").onclick = function (evt) {
+        if (!pc)
+            console.log("Need global pc variable");
+
+        pc.addIceCandidate(new RTCIceCandidate({
+            "candidate": '{"type": "host", "foundation": "6", "componentId": 1, "transport": "UDP"}',
+            "sdpMLineIndex": 0
+        })).then(function () {
+            console.log("addIceCandidate: resolved");
+        })
+        .catch(function (error) {
+            console.log("addIceCandidate: catch error: " + error);
+        });
+    };
+
+};
+
+</script>
+
+</head>
+<body>
+<h2>WebRTC Test Buttons</h2>
+
+<input type="button" id="promise_based" value="Promise getUserMedia()">
+<input type="button" id="legacy" value="Legacy getUserMedia()">
+<input type="button" id="create_pc" value="Create RTCPeerConnection (pc)">
+<input type="button" id="create_pc2" value="Create RTCPeerConnection (addTrack+createOffer) (pc)">
+<input type="button" id="add_bad_candidate" value="Add bad candidate (pc)">
+<input type="button" id="add_candidate" value="Add candidate (pc)">
+
+</body>
+</html>
