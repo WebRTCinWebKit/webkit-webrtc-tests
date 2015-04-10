@@ -250,6 +250,7 @@ window.onload = function () {
             sender = pc.addTrack(videoTrack, "not used");
 
             shouldBeEqual('sender instanceof RTCRtpSender', 'true');
+            shouldBeEqual('sender.track', 'videoTrack');
 
             log("do createOffer");
             pc.createOffer().then(function (offer) {
