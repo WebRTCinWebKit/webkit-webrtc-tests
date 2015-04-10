@@ -218,7 +218,7 @@ window.onload = function () {
             log("video track label: " + s.getVideoTracks()[0].label);
 
             var video = document.querySelector("#self_view_video");
-            video.src = URL.createObjectURL(s);
+            video.srcObject = stream;
             log("video added, video.src: " + video.src);
 
         }, function () {
