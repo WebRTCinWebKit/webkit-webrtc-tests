@@ -5,7 +5,10 @@
 
 <script type="text/javascript">
 
+var noStreamMessage = "test aborted (no stream)";
+
 var errorCountSpan;
+var useMediaDevicesRadio;
 var errorCount = 0;
 
 var promise;
@@ -55,7 +58,7 @@ window.onload = function () {
     };
 
     document.querySelector("#test_stream_but").onclick = function (evt) {
-        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
 
             shouldBeEqual('stream.getAudioTracks().length', '1');
@@ -118,13 +121,11 @@ window.onload = function () {
             log("remove audioTrack from stream2 again");
             shouldNotThrow('stream2.removeTrack(audioTrack)');
 
-        }, function () {
-            log("test aborted (no stream)");
         });
     };
 
     document.querySelector("#test_track_stop_but").onclick = function (evt) {
-        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
 
             log("extract track from stream");
@@ -158,13 +159,11 @@ window.onload = function () {
             shouldNotThrow('track.stop()');
             shouldBeEqual('track.readyState', '"ended"');
 
-        }, function () {
-            log("test aborted (no stream)");
         });
     };
 
     document.querySelector("#test_stream_active_but").onclick = function (evt) {
-        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
 
             log("extract track from stream");
@@ -202,18 +201,17 @@ window.onload = function () {
 
             shouldBeEqual('stream2.active', 'false');
 
-        }, function () {
-            log("test aborted (no stream)");
         });
     };
 
     document.querySelector("#self_view_test_but").onclick = function (evt) {
-        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
 
             log("test self view");
 
             shouldBeEqual('stream.getVideoTracks().length', '1');
+            shouldBeEqual('stream.active', 'true');
 
             log("video track label: " + s.getVideoTracks()[0].label);
 
@@ -221,8 +219,6 @@ window.onload = function () {
             video.srcObject = stream;
             log("video added, video.src: " + video.src);
 
-        }, function () {
-            log("test aborted (no stream)");
         });
     };
 
@@ -239,7 +235,7 @@ window.onload = function () {
     document.querySelector("#pr_create_offer_but").onclick = function (evt) {
         requirePc();
 
-        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
 
             log("do addTrack() and createOffer() test");
@@ -272,8 +268,6 @@ window.onload = function () {
                     log("candidate.candidate: " + candidate.candidate);
             };
 
-        }, function () {
-            log("test aborted (no stream)");
         });
     };
 
@@ -370,12 +364,30 @@ function requirePc() {
         throw "this tests needs the global pc variable set";
 }
 
+function defaultGetUserMedia(options, errorMessage, streamCallback) {
+    function errorCallback() {
+        log(errorMessage);
+    }
+
+    if (!useMediaDevicesRadio)
+        useMediaDevicesRadio = document.querySelector("#use_mediadevices_radio");
+
+    if (useMediaDevicesRadio.checked)
+        navigator.mediaDevices.getUserMedia(options).then(streamCallback).catch(errorCallback);
+    else
+        navigator.webkitGetUserMedia(options, streamCallback, errorCallback);
+}
+
 </script>
 
 </head>
 
 <body>
-Open console to see output | Errors: <span id="error_count_span">0</span>
+Open console to see output | Errors: <span id="error_count_span">0</span><br>
+
+Default getUserMedia():
+<input type="radio" name="gum_mode" value="MediaDevices" checked id="use_mediadevices_radio">MediaDevices
+<input type="radio" name="gum_mode" value="Legacy">Legacy
 <hr>
 
 <input type="button" id="promise_gum_but" value="Promise getUserMedia()">
