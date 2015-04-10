@@ -1,123 +1,396 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Buttons</title>
+    <title>Buttons - WebRTC Tests</title>
 
-<script>
+<script type="text/javascript">
 
-var s;
+var errorCountSpan;
+var errorCount = 0;
+
+var promise;
+var stream, stream2, stream3;
+var track, audioTrack, videoTrack;
+var error;
+var oldTrackCount;
+var kind, id, label, enabled, readonly, remote;
 var pc;
+var sender;
 
 window.onload = function () {
+
     var options = { "video": true, "audio": true };
 
-    document.querySelector("#promise_based").onclick = function (evt) {
-        console.log("has navigator.mediaDevices: " + !!navigator.mediaDevices);
+    document.querySelector("#promise_gum_but").onclick = function (evt) {
+        shouldBeEqual('!!navigator.mediaDevices', 'true');
 
-        var p = navigator.mediaDevices.getUserMedia(options);
+        promise = navigator.mediaDevices.getUserMedia(options);
+        shouldBeEqual('promise instanceof Promise', 'true');
 
-        console.log("p: " + p);
+        promise.then(function (s) {
+            stream = s;
+            shouldBeEqual('stream instanceof webkitMediaStream', 'true');
 
-        p.then(function (stream) {
-            console.log("Promise resolved");
-            console.log("stream: " + stream);
-            s = stream;
+            shouldBeEqual('stream.getAudioTracks().length', '1');
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+        })
+        .catch(function (e) {
+            error = e;
+            shouldBeEqual('error.name', '"PermissionDeniedError"');
+        });
+    };
+
+    document.querySelector("#legacy_gum_but").onclick = function (evt) {
+        navigator.webkitGetUserMedia(options, function (s) {
+            stream = s;
+            shouldBeEqual('stream instanceof webkitMediaStream', 'true');
+
+            shouldBeEqual('stream.getAudioTracks().length', '1');
+            shouldBeEqual('stream.getVideoTracks().length', '1');
         }
-        /*, function (error) {
-            console.log("Promise rejected");
-            console.log("error: " + error);
-        }*/)
-        .catch(function (error) {
-            console.log("Promise catch");
-            console.log("error: " + error);
+        , function (e) {
+            error = e;
+            shouldBeEqual('error.name', '"PermissionDeniedError"');
         });
     };
 
-    document.querySelector("#legacy").onclick = function (evt) {
-        navigator.webkitGetUserMedia(options, function (stream) {
-            console.log("success callback");
-            console.log("stream: " + stream);
-            s = stream;
-        },
-        function (error) {
-            console.log("error callback");
-            console.log("error: " + error);
+    document.querySelector("#test_stream_but").onclick = function (evt) {
+        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+            stream = s;
+
+            shouldBeEqual('stream.getAudioTracks().length', '1');
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+
+            shouldNotBeEqual('stream.id', '""');
+
+            shouldBeEqual('stream.getTracks().length', '2');
+
+            log("extract audioTrack from stream");
+            audioTrack = stream.getAudioTracks()[0];
+
+            shouldBeEqual('audioTrack instanceof MediaStreamTrack', 'true');
+            shouldNotBeEqual('audioTrack.id', '""');
+            shouldBeEqual('audioTrack.kind', '"audio"');
+
+            shouldBeEqual('stream.getTrackById(audioTrack.id)', 'audioTrack');
+
+            log("store old track count and add already existing track to stream");
+            oldTrackCount = stream.getTracks().length;
+            stream.addTrack(audioTrack);
+
+            shouldBeEqual('stream.getTracks().length', 'oldTrackCount');
+
+            log("construct stream2");
+            stream2 = new webkitMediaStream();
+
+            shouldBeEqual('stream2.getTracks().length', '0');
+            shouldNotBeEqual('stream.id', 'stream2.id');
+
+            shouldBeEqual('stream2.active', 'false');
+
+            log("add audioTrack to empty MediaStream stream2");
+            stream2.addTrack(audioTrack);
+
+            log("add audioTrack to empty MediaStream stream2 again");
+            shouldNotThrow('stream2.addTrack(audioTrack)');
+
+            shouldBeEqual('stream2.getAudioTracks().length', '1');
+            shouldBeEqual('stream2.getVideoTracks().length', '0');
+            shouldBeEqual('stream2.getTracks().length', '1');
+
+            shouldBeEqual('stream2.getTrackById(audioTrack.id)', 'audioTrack');
+            shouldBeEqual('stream2.getTrackById("foo-id")', 'null');
+
+            log("clone stream2 to stream3");
+            stream3 = stream2.clone();
+            shouldBeEqual('stream2.getTracks().length', 'stream3.getTracks().length');
+
+            // tracks are cloned as well
+            shouldBeEqual('stream3.getTrackById(stream2.getTracks()[0].id)', 'null');
+
+            log("remove audioTrack from stream2");
+            stream2.removeTrack(audioTrack);
+
+            shouldBeEqual('stream2.getAudioTracks().length', '0');
+            shouldBeEqual('stream2.getVideoTracks().length', '0');
+            shouldBeEqual('stream2.getTracks().length', '0');
+
+            log("remove audioTrack from stream2 again");
+            shouldNotThrow('stream2.removeTrack(audioTrack)');
+
+        }, function () {
+            log("test aborted (no stream)");
         });
     };
 
-    document.querySelector("#create_pc").onclick = function (evt) {
+    document.querySelector("#test_track_stop_but").onclick = function (evt) {
+        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+            stream = s;
+
+            log("extract track from stream");
+            track = stream.getTracks()[0];
+
+            shouldBeEqual('track.readyState', '"live"');
+
+            log("store track properties that must be preserved when stopped");
+            kind = track.kind;
+            id = track.id;
+            label = track.label;
+            enabled = track.enabled;
+            readonly = track.readonly;
+            remote = track.remote;
+
+            log("do track.stop()");
+            track.stop();
+            shouldBeEqual('track.readyState', '"ended"');
+
+            shouldBeEqual('track.kind', 'kind');
+            shouldBeEqual('track.id', 'id');
+            shouldBeEqual('track.label', 'label');
+            shouldBeEqual('track.enabled', 'enabled');
+            shouldBeEqual('track.readonly', 'readonly');
+            shouldBeEqual('track.remote', 'remote');
+
+            // muted is dependent on source and not preserved
+            shouldBeEqual('track.muted', 'true'); // FIXME: fails
+
+            log("do track.stop() again");
+            shouldNotThrow('track.stop()');
+            shouldBeEqual('track.readyState', '"ended"');
+
+        }, function () {
+            log("test aborted (no stream)");
+        });
+    };
+
+    document.querySelector("#test_stream_active_but").onclick = function (evt) {
+        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+            stream = s;
+
+            log("extract track from stream");
+            track = stream.getTracks()[0];
+
+            shouldBeEqual('track.readyState', '"live"');
+
+            log("construct stream2 (empty MediaStream)")
+            stream2 = new webkitMediaStream();
+
+            shouldBeEqual('stream2.active', 'false');
+
+            log("register handlers for active/inactive events on stream2");
+            stream2.onactive = function (evt) {
+                log("active handler called");
+                shouldBeEqual('stream2.active', 'true');
+            };
+            stream2.oninactive = function (evt) {
+                log("inactive handler called");
+                shouldBeEqual('stream2.active', 'false');
+            };
+
+            log("add live track to stream2");
+            stream2.addTrack(track); // FIXME: fails
+
+            shouldBeEqual('stream2.active', 'true');
+
+            log("stop track");
+            track.stop();
+
+            shouldBeEqual('stream2.active', 'false');
+
+            log("add ended track to stream2");
+            stream2.addTrack(track);
+
+            shouldBeEqual('stream2.active', 'false');
+
+        }, function () {
+            log("test aborted (no stream)");
+        });
+    };
+
+    document.querySelector("#self_view_test_but").onclick = function (evt) {
+        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+            stream = s;
+
+            log("test self view");
+
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+
+            log("video track label: " + s.getVideoTracks()[0].label);
+
+            var video = document.querySelector("#self_view_video");
+            video.src = URL.createObjectURL(s);
+            log("video added, video.src: " + video.src);
+
+        }, function () {
+            log("test aborted (no stream)");
+        });
+    };
+
+    document.querySelector("#create_pc_but").onclick = function (evt) {
+        log("create pc (RTCPeerConnection)");
+
         var configuration = { "iceServers": [{ "urls": "stun:132.177.123.6" }] };
+        log("create pc (RTCPeerConnection)");
         pc = new webkitRTCPeerConnection(configuration);
+
+        shouldBeEqual('pc instanceof webkitRTCPeerConnection', 'true');
     };
 
-    document.querySelector("#create_pc2").onclick = function (evt) {
-        var configuration = { "iceServers": [{ "urls": "stun:132.177.123.6" }] };
-        pc = new webkitRTCPeerConnection(configuration);
+    document.querySelector("#pr_create_offer_but").onclick = function (evt) {
+        requirePc();
 
-        pc.onicecandidate = function (evt) {
-            var candidate = evt.candidate;
-            console.log("candidate: " + candidate)
-            if (candidate)
-                console.log("candidate.candidate: " + candidate.candidate);
-        };
+        navigator.mediaDevices.getUserMedia(options).then(function (s) {
+            stream = s;
 
-        var track = new AudioStreamTrack();
-        pc.addTrack(track, "not used");
+            log("do addTrack() and createOffer() test");
 
-        pc.createOffer().then(function (offer) {
-            console.log("got offer");
-            console.log("offer.sdp: " + offer.sdp);
-            return pc.setLocalDescription(offer);
-        })
-        .then(function () {
-            console.log("offer set");
-        })
-        .catch(function () {
-            console.log("catch!");
+            videoTrack = stream.getVideoTracks()[0];
+
+            log("add videoTrack to pc");
+            sender = pc.addTrack(track, "not used");
+
+            shouldBeEqual('sender instanceof RTCRtpSender', 'true');
+
+            log("do createOffer");
+            pc.createOffer().then(function (offer) {
+                log("got offer, offer.sdp: " + offer.sdp);
+                log("do setLocalDescription");
+                return pc.setLocalDescription(offer);
+            })
+            .then(function () {
+                log("offer set");
+            })
+            .catch(function () {
+                reportError("error in createOffer - setLocalDescription Promise chain");
+            });
+
+            pc.onicecandidate = function (evt) {
+                var candidate = evt.candidate;
+                log("candidate: " + candidate)
+                if (candidate)
+                    log("candidate.candidate: " + candidate.candidate);
+            };
+
+        }, function () {
+            log("test aborted (no stream)");
         });
     };
 
-    document.querySelector("#add_bad_candidate").onclick = function (evt) {
-        if (!pc)
-            console.log("Need global pc variable");
+    document.querySelector("#pc_add_candidate_test_but").onclick = function (evt) {
+        requirePc();
 
-        pc.addIceCandidate(new RTCIceCandidate({ "candidate": "bad", "sdpMLineIndex": 0 })).then(function () {
-            console.log("addIceCandidate: resolved");
-        })
-        .catch(function (error) {
-            console.log("addIceCandidate: catch error: " + error);
-        });
-    };
-
-    document.querySelector("#add_candidate").onclick = function (evt) {
-        if (!pc)
-            console.log("Need global pc variable");
-
-        pc.addIceCandidate(new RTCIceCandidate({
+        var candidate = new RTCIceCandidate({
             "candidate": '{"type": "host", "foundation": "6", "componentId": 1, "transport": "UDP"}',
             "sdpMLineIndex": 0
-        })).then(function () {
-            console.log("addIceCandidate: resolved");
+        });
+
+        pc.addIceCandidate(candidate).then(function () {
+            log("PASS: candidate accepted");
         })
         .catch(function (error) {
-            console.log("addIceCandidate: catch error: " + error);
+            reportError("FAIL: candidate rejected");
         });
     };
 
+    document.querySelector("#pc_bad_candidate_test_but").onclick = function (evt) {
+        requirePc();
+
+        var candidate = new RTCIceCandidate({ "candidate": "bad", "sdpMLineIndex": 0 });
+
+        pc.addIceCandidate(candidate).then(function () {
+            reportError("FAIL: bad candidate accepted");
+        })
+        .catch(function (error) {
+            log("PASS: got bad candidate rejected");
+        });
+    };
 };
+
+function shouldBeEqual(expression1, expression2) {
+    evalWithOperator(expression1, expression2, "==");
+}
+
+function shouldNotBeEqual(expression1, expression2) {
+    evalWithOperator(expression1, expression2, "!=");
+}
+
+function evalWithOperator(expression1, expression2, operator) {
+    try {
+        if (eval("(" + expression1 + ") " + operator + " (" + expression2 +")")) {
+            log("PASS: '" + expression1 + "' " + operator + " '" + expression2 +"'");
+            return;
+        }
+    } catch (e) {
+        log("ERROR: exception thrown: " + e);
+    }
+    reportError("FAIL: '" + expression1 + "' (" + eval(expression1) + ") " + operator +
+        " '" + expression2 +"' (" + eval(expression2) + ")");
+}
+
+function shouldThrow(expression) {
+    try {
+        eval(expression);
+    } catch (e) {
+        log("PASS: '" + expression + "' did throw");
+        return;
+    }
+    reportError("FAIL: '" + expression + "' should have thrown");
+}
+
+function shouldNotThrow(expression) {
+    try {
+        eval(expression);
+    } catch (e) {
+        reportError("FAIL: '" + expression + "' should not have thrown");
+        return;
+    }
+    log("PASS: '" + expression + "' did not throw");
+}
+
+function reportError(message) {
+    logFailure(message);
+
+    if (!errorCountSpan)
+        errorCountSpan = document.querySelector("#error_count_span");
+
+    errorCountSpan.innerHTML = ++errorCount;
+}
+
+function log(message) {
+    console.log(message);
+}
+
+function logFailure(message) {
+    console.warn(message);
+}
+
+function requirePc() {
+    if (!pc)
+        throw "this tests needs the global pc variable set";
+}
 
 </script>
 
 </head>
-<body>
-<h2>WebRTC Test Buttons</h2>
 
-<input type="button" id="promise_based" value="Promise getUserMedia()">
-<input type="button" id="legacy" value="Legacy getUserMedia()">
-<input type="button" id="create_pc" value="Create RTCPeerConnection (pc)">
-<input type="button" id="create_pc2" value="Create RTCPeerConnection (addTrack+createOffer) (pc)">
-<input type="button" id="add_bad_candidate" value="Add bad candidate (pc)">
-<input type="button" id="add_candidate" value="Add candidate (pc)">
+<body>
+Open console to see output | Errors: <span id="error_count_span">0</span>
+<hr>
+
+<input type="button" id="promise_gum_but" value="Promise getUserMedia()">
+<input type="button" id="legacy_gum_but" value="Legacy getUserMedia()">
+<input type="button" id="test_stream_but" value="Test MediaStream API">
+<input type="button" id="test_track_stop_but" value="Test MediaStreamTrack.stop()">
+<input type="button" id="test_stream_active_but" value="Test MediaStream.active">
+<input type="button" id="self_view_test_but" value="Self-view test (manual)">
+<hr>
+<input type="button" id="create_pc_but" value="Create RTCPeerConnection (creates pc) (manual)">
+<input type="button" id="pr_create_offer_but" value="Do addTrack() and createOffe() (needs pc) (manual)">
+<input type="button" id="pc_add_candidate_test_but" value="Add candidate (needs pc) (manual)">
+<input type="button" id="pc_bad_candidate_test_but" value="Add bad candidate (needs pc) (manual)">
+<hr>
+
+<video id="self_view_video" autoplay style="width:160px; height:120px; border: 1px dashed black;"></video>
 
 </body>
 </html>
