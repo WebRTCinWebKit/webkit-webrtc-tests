@@ -247,7 +247,7 @@ window.onload = function () {
             videoTrack = stream.getVideoTracks()[0];
 
             log("add videoTrack to pc");
-            sender = pc.addTrack(track, "not used");
+            sender = pc.addTrack(videoTrack, "not used");
 
             shouldBeEqual('sender instanceof RTCRtpSender', 'true');
 
