@@ -19,6 +19,7 @@ var oldTrackCount;
 var kind, id, label, enabled, readonly, remote;
 var pc;
 var sender;
+var oldSenders;
 
 window.onload = function () {
 
@@ -235,6 +236,40 @@ window.onload = function () {
         shouldBeEqual('pc instanceof webkitRTCPeerConnection', 'true');
     };
 
+    document.querySelector("#pc_add_remove_track_but").onclick = function (evt) {
+        requirePc();
+
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+
+            log("do add/removeTrack test");
+
+            videoTrack = stream.getVideoTracks()[0];
+
+            log("store senders snapshat (oldSenders)");
+            oldSenders = pc.getSenders();
+            shouldNotBeEqual('pc.getSenders()', 'oldSenders');
+
+            log("add videoTrack to pc");
+            sender = pc.addTrack(videoTrack, "not used");
+
+            shouldBeEqual('sender instanceof RTCRtpSender', 'true');
+            shouldBeEqual('sender.track', 'videoTrack');
+            shouldBeEqual('pc.getSenders().length', '1');
+
+            log("add videoTrack to pc again");
+            shouldThrow('pc.addTrack(videoTrack, "not used")');
+            shouldBeEqual('pc.getSenders().length', '1');
+
+            log("remove sender (videoTrack) from pc");
+            pc.removeTrack(sender);
+            shouldBeEqual('pc.getSenders().length', '0');
+
+            log("remove sender (videoTrack) from pc again");
+            shouldNotThrow('pc.removeTrack(sender)');
+        });
+    };
+
     document.querySelector("#pr_create_offer_but").onclick = function (evt) {
         requirePc();
 
@@ -247,9 +282,6 @@ window.onload = function () {
 
             log("add videoTrack to pc");
             sender = pc.addTrack(videoTrack, "not used");
-
-            shouldBeEqual('sender instanceof RTCRtpSender', 'true');
-            shouldBeEqual('sender.track', 'videoTrack');
 
             log("do createOffer");
             pc.createOffer().then(function (offer) {
@@ -401,6 +433,7 @@ Default getUserMedia():
 <input type="button" id="self_view_test_but" value="Self-view test (manual)">
 <hr>
 <input type="button" id="create_pc_but" value="Create RTCPeerConnection (creates pc) (manual)">
+<input type="button" id="pc_add_remove_track_but" value="Test add/removeTrack() (needs pc)">
 <input type="button" id="pr_create_offer_but" value="Do addTrack() and createOffe() (needs pc) (manual)">
 <input type="button" id="pc_add_candidate_test_but" value="Add candidate (needs pc) (manual)">
 <input type="button" id="pc_bad_candidate_test_but" value="Add bad candidate (needs pc) (manual)">
