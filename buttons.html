@@ -468,6 +468,84 @@ window.onload = function () {
         });
     }
 
+    document.querySelector("#pc_reuse_desc_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+
+            log("test reusing media descriptions");
+
+            videoTrack = stream.getVideoTracks()[0];
+
+            log("construct pc2");
+            pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
+
+            log("add videoTrack to pc2");
+            sender = pc2.addTrack(videoTrack, "not used");
+
+            log("create first offer (one track added)")
+            pc2.createOffer().then(function (o) {
+                offer = o;
+                log("1st offer created");
+
+                shouldBeEqual('countSubStrings(offer.sdp, "video")', '1');
+                shouldBeEqual('countSubStrings(offer.sdp, "sendrecv")', '1');
+
+                log("set (local) 1st offer")
+                return pc2.setLocalDescription(offer);
+            })
+            .then(function () {
+                log("1st offer set");
+
+                log("create 2nd offer (no tracks added)");
+                return pc2.createOffer();
+            })
+            .then(function (o) {
+                offer = o;
+                log("2nd offer created");
+
+                shouldBeEqual('countSubStrings(offer.sdp, "video")', '1');
+                shouldBeEqual('countSubStrings(offer.sdp, "sendrecv")', '1');
+
+                log("no need to set 2nd offer (no change)");
+
+                log("remove sender (videoTrack) from pc2");
+                pc2.removeTrack(sender);
+
+                log("create 3rd offer");
+                return pc2.createOffer();
+            })
+            .then(function (o) {
+                offer = o;
+                log("3rd offer created");
+
+                shouldBeEqual('countSubStrings(offer.sdp, "video")', '1');
+                shouldBeEqual('countSubStrings(offer.sdp, "recvonly")', '1');
+
+                log("set (local) 3rd offer");
+                return pc2.setLocalDescription(offer);
+            })
+            .then(function () {
+                log("3rd offer set");
+
+                log("add clone of videoTrack to pc2");
+                pc2.addTrack(videoTrack.clone(), "not used");
+
+                log("create 4th offer (should reuse old media description)");
+                return pc2.createOffer();
+            })
+            .then(function (o) {
+                offer = o;
+                log("4th offer created");
+
+                shouldBeEqual('countSubStrings(offer.sdp, "video")', '1');
+                shouldBeEqual('countSubStrings(offer.sdp, "sendrecv")', '1');
+            })
+            .catch(function (error) {
+                reportError("error in createOffer - setLocalDescription Promise chain: " + error);
+            });
+        });
+    };
+
     document.querySelector("#pc_add_candidate_test_but").onclick = function (evt) {
         requirePc();
 
@@ -610,6 +688,7 @@ Default getUserMedia():
 <input type="button" id="pc_create_offer_but" value="Do addTrack() and createOffer() (needs pc) (manual)">
 <input type="button" id="pc_create_offer2_but" value="Test createOffer() with options">
 <input type="button" id="pc_set_local_but" value="Test bad input (desc type) to setLocal/RemoteDescription()">
+<input type="button" id="pc_reuse_desc_but" value="Test reusing media descriptions">
 <input type="button" id="pc_add_candidate_test_but" value="Add candidate (needs pc) (manual)">
 <input type="button" id="pc_bad_candidate_test_but" value="Add bad candidate (needs pc) (manual)">
 <hr>
