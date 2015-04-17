@@ -357,7 +357,7 @@ window.onload = function () {
 
         pc2.createOffer({ "offerToReceiveAudio": 2 }).then(function (o) {
             offer = o;
-            // log("offer: " + JSON.stringify(JSON.parse(offer.sdp), null, 4));
+            // prettyPrintDesc(offer);
             shouldBeEqual('countSubStrings(offer.sdp, "audio")', '2');
             shouldBeEqual('countSubStrings(offer.sdp, "video")', '0');
 
@@ -577,6 +577,12 @@ function defaultGetUserMedia(options, errorMessage, streamCallback) {
 
 function countSubStrings(source, str) {
     return (source.match(new RegExp(str, "g")) || []).length;
+}
+
+function prettyPrintDesc(desc) {
+    log("=== Pretty Print (type: " + desc.type + ") ===");
+    log("offer: " + JSON.stringify(JSON.parse(desc.sdp), null, 4));
+    log("=== End ===");
 }
 
 </script>
