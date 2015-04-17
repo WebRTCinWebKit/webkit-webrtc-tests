@@ -420,6 +420,54 @@ window.onload = function () {
         });
     }
 
+    document.querySelector("#pc_set_local_but").onclick = function (evt) {
+        log("do setLocalDescription() test");
+
+        log("construct pc2");
+        pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
+
+        log("test bad offers (wrong type)");
+
+        pc2.createOffer({ "offerToReceiveVideo": 1 }).then(function (o) {
+            offer = o;
+            log("got offer, start testing");
+            setTimeout(startTesting);
+        })
+        .catch(function () {
+            reportError("createOffer() failed (p2)");
+        });
+
+        function startTesting() {
+            testBadDescs(pc2, "setLocalDescription", offer, ["pranswer", "answer"], continueWithSetRemote);
+        }
+
+        function continueWithSetRemote() {
+            log("continue with setRemote");
+            testBadDescs(pc2, "setRemoteDescription", offer, ["pranswer", "answer"]);
+        }
+    };
+
+    function testBadDescs(pc, setterName, desc, types, doneCallback) {
+        // Test each type in types (as type on desc) and then call doneCallback.
+        var nextType = types.shift();
+        if (!nextType) {
+            if (doneCallback)
+                doneCallback();
+            return;
+        }
+
+        desc.type = nextType;
+        // log("test " + setterName + "() with type " + desc.type + " (current pc signaling state: " + pc.signalingState + ")");
+
+        pc[setterName](desc).then(function () {
+            reportError("FAIL: " + setterName + ": bad session description (type: " + desc.type + ") accepted");
+        })
+        .catch(function (error) {
+            log("PASS: " + setterName + ": bad session description (type: " + desc.type + ") produced expected error");
+            setTimeout(testBadDescs, 0, pc, setterName, desc, types, doneCallback);
+        });
+    }
+
     document.querySelector("#pc_add_candidate_test_but").onclick = function (evt) {
         requirePc();
 
@@ -555,6 +603,7 @@ Default getUserMedia():
 <input type="button" id="pc_add_remove_track_but" value="Test add/removeTrack() (needs pc)">
 <input type="button" id="pc_create_offer_but" value="Do addTrack() and createOffer() (needs pc) (manual)">
 <input type="button" id="pc_create_offer2_but" value="Test createOffer() with options">
+<input type="button" id="pc_set_local_but" value="Test bad input (desc type) to setLocal/RemoteDescription()">
 <input type="button" id="pc_add_candidate_test_but" value="Add candidate (needs pc) (manual)">
 <input type="button" id="pc_bad_candidate_test_but" value="Add bad candidate (needs pc) (manual)">
 <hr>
