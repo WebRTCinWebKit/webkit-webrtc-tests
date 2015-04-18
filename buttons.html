@@ -295,14 +295,14 @@ window.onload = function () {
             shouldNotBeEqual('pc.getSenders()', 'oldSenders');
 
             log("add videoTrack to pc");
-            sender = pc.addTrack(videoTrack, "not used");
+            sender = pc.addTrack(videoTrack, stream);
 
             shouldBeEqual('sender instanceof RTCRtpSender', 'true');
             shouldBeEqual('sender.track', 'videoTrack');
             shouldBeEqual('pc.getSenders().length', '1');
 
             log("add videoTrack to pc again");
-            shouldThrow('pc.addTrack(videoTrack, "not used")');
+            shouldThrow('pc.addTrack(videoTrack, stream)');
             shouldBeEqual('pc.getSenders().length', '1');
 
             log("remove sender (videoTrack) from pc");
@@ -325,7 +325,7 @@ window.onload = function () {
             videoTrack = stream.getVideoTracks()[0];
 
             log("add videoTrack to pc");
-            sender = pc.addTrack(videoTrack, "not used");
+            sender = pc.addTrack(videoTrack, stream);
 
             log("do createOffer");
             pc.createOffer().then(function (o) {
@@ -407,7 +407,7 @@ window.onload = function () {
             pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
 
             log("add videoTrack to pc2");
-            pc2.addTrack(videoTrack, "not used");
+            pc2.addTrack(videoTrack, stream);
 
             pc2.createOffer({ "offerToReceiveAudio": 2, "offerToReceiveVideo": 2 }).then(function (o) {
                 offer = o;
@@ -480,7 +480,7 @@ window.onload = function () {
             pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
 
             log("add videoTrack to pc2");
-            sender = pc2.addTrack(videoTrack, "not used");
+            sender = pc2.addTrack(videoTrack, stream);
 
             log("create first offer (one track added)")
             pc2.createOffer().then(function (o) {
@@ -528,7 +528,7 @@ window.onload = function () {
                 log("3rd offer set");
 
                 log("add clone of videoTrack to pc2");
-                pc2.addTrack(videoTrack.clone(), "not used");
+                pc2.addTrack(videoTrack.clone(), stream);
 
                 log("create 4th offer (should reuse old media description)");
                 return pc2.createOffer();
