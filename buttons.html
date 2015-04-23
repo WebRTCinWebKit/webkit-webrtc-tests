@@ -330,12 +330,14 @@ window.onload = function () {
             log("do createOffer");
             pc.createOffer().then(function (o) {
                 offer = o;
-                log("got offer, offer.sdp: " + offer.sdp);
+                prettyPrintDesc(offer);
+
                 log("do setLocalDescription");
                 return pc.setLocalDescription(offer);
             })
             .then(function () {
                 log("offer set");
+                prettyPrintDesc(pc.localDescription);
             })
             .catch(function () {
                 reportError("error in createOffer - setLocalDescription Promise chain");
