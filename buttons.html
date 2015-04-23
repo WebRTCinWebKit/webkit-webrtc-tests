@@ -357,6 +357,9 @@ window.onload = function () {
         log("construct pc2");
         pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
 
+        shouldBeEqual('pc2.localDescription', 'null');
+        shouldBeEqual('pc2.remoteDescription', 'null');
+
         pc2.createOffer({ "offerToReceiveAudio": 2 }).then(function (o) {
             offer = o;
             // prettyPrintDesc(offer);
