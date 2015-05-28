@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+<head>
+<title>Simple Client</title>
+
+<style type="text/css">
+    video { width: 320px; height: 240px; }
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./signaling_channel.js" type="text/javascript"></script>
+<script>
+var isFirefox = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
+if (isFirefox) {
+    window.webkitURL = window.URL;
+    navigator.webkitGetUserMedia = navigator.mozGetUserMedia;
+    window.webkitRTCPeerConnection = window.mozRTCPeerConnection;
+    window.RTCSessionDescription = window.mozRTCSessionDescription;
+    window.RTCIceCandidate = window.mozRTCIceCandidate;
+}
+
+var remoteView;
+var callButton;
+
+var signalingChannel;
+var pc;
+var peer;
+var localStream;
+
+// must use 'url' here since Firefox doesn't understand 'urls'
+var configuration = { "iceServers": [{ "url": "stun:mmt-stun.verkstad.net" }] };
+
+window.onload = function () {
+    remoteView = document.getElementById("remote_view");
+    callButton = document.getElementById("call_but");
+    var selfView = document.getElementById("self_view");
+    var joinButton = document.getElementById("join_but");
+    var audioCheckBox = document.getElementById("audio_cb");
+    var videoCheckBox = document.getElementById("video_cb");
+
+    joinButton.disabled = !navigator.webkitGetUserMedia;
+    joinButton.onclick = function (evt) {
+        audioCheckBox.disabled = videoCheckBox.disabled = true;
+        // get a local stream
+        navigator.webkitGetUserMedia({ "audio": audioCheckBox.checked,
+            "video": videoCheckBox.checked }, function (stream) {
+            // .. show it in a self-view
+            if (typeof selfView.srcObject != "undefined")
+                selfView.srcObject = stream;
+            else
+                selfView.src = URL.createObjectURL(stream);
+            // .. and keep it to be sent later
+            localStream = stream;
+
+            joinButton.disabled = true;
+
+            var sessionId = document.getElementById("session_txt").value;
+            signalingChannel = new SignalingChannel(sessionId);
+
+            callButton.onclick = function () {
+                start(true);
+            };
+
+            // another peer has joined our session
+            signalingChannel.onpeer = function (evt) {
+                callButton.disabled = false;
+
+                peer = evt.peer;
+                peer.onmessage = handleMessage;
+
+                peer.ondisconnect = function () {
+                    callButton.disabled = true;
+                    if (pc)
+                        pc.close();
+                    pc = null;
+                };
+            };
+        }, logError);
+    };
+}
+
+// handle signaling messages received from the other peer
+function handleMessage(evt) {
+    if (!pc)
+        start(false);
+
+    var message = JSON.parse(evt.data);
+    if (message.sdp) {
+        var desc = new RTCSessionDescription(message.sdp);
+        logSignalling(desc, "incoming");
+        pc.setRemoteDescription(desc, function () {
+            // if we received an offer, we need to create an answer
+            if (pc.remoteDescription.type == "offer")
+                pc.createAnswer(localDescCreated, logError);
+        }, logError);
+    } else {
+        logSignalling(message.candidate, "incoming");
+        pc.addIceCandidate(new RTCIceCandidate(message.candidate), function () {}, logError);
+    }
+}
+
+// call start() to initiate
+function start(isInitiator) {
+    callButton.disabled = true;
+    pc = new webkitRTCPeerConnection(configuration);
+
+    // send any ice candidates to the other peer
+    pc.onicecandidate = function (evt) {
+        if (evt.candidate) {
+            logSignalling(evt.candidate, "outgoing");
+            peer.send(JSON.stringify({ "candidate": evt.candidate }));
+        }
+    };
+
+    // let the "negotiationneeded" event trigger offer generation
+    pc.onnegotiationneeded = function () {
+        // check signaling state here because Chrome dispatches negotiationeeded during negotiation
+        if (pc.signalingState == "stable")
+            pc.createOffer(localDescCreated, logError);
+    };
+
+    // once the remote stream arrives, show it in the remote video element
+    pc.onaddstream = function (evt) {
+        remoteView.src = URL.createObjectURL(evt.stream);
+    };
+
+    pc.addStream(localStream);
+
+    // the negotiationneeded event is not supported in Firefox
+    if (isFirefox && isInitiator)
+        pc.onnegotiationneeded();
+}
+
+function localDescCreated(desc) {
+    pc.setLocalDescription(desc, function () {
+        logSignalling(pc.localDescription, "outgoing");
+        peer.send(JSON.stringify({ "sdp": pc.localDescription }));
+    }, logError);
+}
+
+function logError(error) {
+    if (error) {
+        if (error.name || error.message)
+            log((error.name || "-") + ": " + (error.message || "-"));
+        else
+            log(error);
+    } else
+        log("Error (no error message)");
+}
+
+function logSignalling(msg, tag) {
+    if (msg.candidate)
+        log("=== " + tag + " candidate === (" + msg.candidate + ")");
+    else if (msg.sdp) {
+        log("=== " + tag + " " + msg.type + " ===");
+        msg.sdp.split("\n").forEach(log);
+        log("===");
+    }
+}
+
+function log(msg) {
+    log.div = log.div || document.getElementById("log_div");
+    log.div.appendChild(document.createTextNode(msg));
+    log.div.appendChild(document.createElement("br"));
+}
+
+</script>
+
+</head>
+<body>
+<h2>Simple WebRTC Example</h2>
+Session id: <input type="text" id="session_txt" value="test"><br>
+<input type="checkbox" id="audio_cb">Audio<br>
+<input type="checkbox" id="video_cb" checked>Video<br>
+<input type="button" id="join_but" value="Join" disabled>
+<input type="button" id="call_but" value="Initiate Call" disabled>
+<br>
+
+<video id="self_view" autoplay muted></video>
+<video id="remote_view" autoplay></video>
+
+<div id="log_div"></div>
+</body>
+</html>
