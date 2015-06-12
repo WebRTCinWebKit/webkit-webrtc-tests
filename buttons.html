@@ -144,6 +144,7 @@ window.onload = function () {
             enabled = track.enabled;
             readonly = track.readonly;
             remote = track.remote;
+            muted = track.muted;
 
             log("do track.stop()");
             track.stop();
@@ -155,9 +156,7 @@ window.onload = function () {
             shouldBeEqual('track.enabled', 'enabled');
             shouldBeEqual('track.readonly', 'readonly');
             shouldBeEqual('track.remote', 'remote');
-
-            // muted is dependent on source and not preserved
-            shouldBeEqual('track.muted', 'true'); // FIXME: fails
+            shouldBeEqual('track.muted', 'muted');
 
             log("do track.stop() again");
             shouldNotThrow('track.stop()');
