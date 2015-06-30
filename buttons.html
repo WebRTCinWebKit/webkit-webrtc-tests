@@ -165,6 +165,25 @@ window.onload = function () {
         });
     };
 
+    document.querySelector("#test_track_stop_event_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+
+            log("extract track from stream");
+            track = stream.getTracks()[0];
+
+            shouldBeEqual('track.readyState', '"live"');
+
+            track.onended = function () {
+                reportError("the ended event must not fire");
+            };
+
+            log("do track.stop()");
+            track.stop();
+            shouldBeEqual('track.readyState', '"ended"');
+        });
+    };
+
     document.querySelector("#test_stream_active_but").onclick = function (evt) {
         defaultGetUserMedia(options, noStreamMessage, function (s) {
             stream = s;
@@ -716,6 +735,7 @@ Default getUserMedia():
 <input type="button" id="legacy_gum_but" value="Legacy getUserMedia()">
 <input type="button" id="test_stream_but" value="Test MediaStream API">
 <input type="button" id="test_track_stop_but" value="Test MediaStreamTrack.stop()">
+<input type="button" id="test_track_stop_event_but" value="Test MediaStreamTrack ended event">
 <input type="button" id="test_stream_active_but" value="Test MediaStream.active">
 <input type="button" id="self_view_test_but" value="Self-view test (manual)">
 <hr>
