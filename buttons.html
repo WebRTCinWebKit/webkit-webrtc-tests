@@ -13,7 +13,7 @@ var errorCount = 0;
 
 var promise;
 var stream, stream2, stream3;
-var track, audioTrack, videoTrack;
+var track, track2, audioTrack, videoTrack;
 var error;
 var oldTrackCount;
 var kind, id, label, enabled, readonly, remote;
@@ -244,6 +244,187 @@ window.onload = function () {
                 video.src = URL.createObjectURL(stream);
             log("video added, video.src: " + video.src);
 
+        });
+    };
+
+    document.querySelector("#test_source_stop_ext_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+            var doneCount = 0;
+
+            function maybeDone() {
+                if (++doneCount == 2)
+                    log("done");
+            }
+
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+            track = stream.getVideoTracks()[0];
+            track2 = track.clone();
+
+            track.onended = function () {
+                log("ended event on track");
+                shouldBeEqual('track.readyState', '"ended"');
+                maybeDone();
+            };
+
+            track2.onended = function () {
+                log("ended event on track2");
+                shouldBeEqual('track.readyState', '"ended"');
+                maybeDone();
+            };
+
+            log("before track.test_stopSource()");
+            track.test_stopSource();
+            log("after track.test_stopSource()");
+
+            shouldBeEqual('track.readyState', '"live"');
+            shouldBeEqual('track2.readyState', '"live"');
+        });
+    };
+
+    document.querySelector("#test_source_stop2_ext_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+            track = stream.getVideoTracks()[0];
+
+            track.onended = function () {
+                reportError("ended event on track! (was stopped already)");
+            };
+
+            log("before track.test_stopSource()");
+            track.test_stopSource();
+            log("after track.test_stopSource()");
+
+            shouldBeEqual('track.readyState', '"live"');
+
+            log("before track.stop() (DOM API)");
+            track.stop();
+            log("after track.stop() (DOM API)");
+
+            shouldBeEqual('track.readyState', '"ended"');
+
+            log("waiting for done");
+            setTimeout(log, 200, "done");
+        });
+    };
+
+    document.querySelector("#test_ua_add_track_ext_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+            shouldBeEqual('stream.active', 'true');
+
+            stream2 = new webkitMediaStream();
+            shouldBeEqual('stream2.getTracks().length', '0');
+            shouldBeEqual('stream2.active', 'false');
+
+
+            log("set up event handlers on stream2");
+
+            stream2.onactive = function () {
+                log("active event on stream2");
+                shouldBeEqual('stream.active', 'true');
+
+                track = stream2.getVideoTracks()[0];
+                log("before stream2.test_userAgentRemoveTrack(track)");
+                stream2.test_userAgentRemoveTrack(track);
+                log("after stream2.test_userAgentRemoveTrack(track)");
+            };
+
+            stream2.oninactive = function () {
+                log("inactive event on stream2");
+                shouldBeEqual('stream2.active', 'false');
+                log("done");
+            };
+
+            stream2.onaddtrack = function (evt) {
+                log("addtrack event on stream2");
+                track = evt.track;
+                shouldBeEqual('track instanceof MediaStreamTrack', 'true');
+                shouldBeEqual('stream2.getTrackById(track.id)', 'track');
+                log("active attribute should not be updated yet");
+                shouldBeEqual('stream2.active', 'false');
+            };
+
+            stream2.onremovetrack = function (evt) {
+                log("removetrack event on stream2");
+                track = evt.track;
+                shouldBeEqual('track instanceof MediaStreamTrack', 'true');
+                shouldBeEqual('stream2.getTrackById(track.id)', 'null');
+                log("active attribute should not be updated yet");
+                shouldBeEqual('stream2.active', 'true');
+            };
+
+            track = stream.getVideoTracks()[0];
+            log("before stream2.test_userAgentAddNewTrack(track)");
+            stream2.test_userAgentAddNewTrack(track);
+            log("after stream2.test_userAgentAddNewTrack(track)");
+        });
+    };
+
+    document.querySelector("#test_source_muted_ext_but").onclick = function (evt) {
+        defaultGetUserMedia(options, noStreamMessage, function (s) {
+            stream = s;
+            var readyToUnmute = false;
+
+            var doneCount = 0;
+
+            function maybeDone() {
+                if (++doneCount == 2)
+                    log("done");
+            }
+
+            function maybeUnmute() {
+                if (!readyToUnmute) {
+                    readyToUnmute = true;
+                    return
+                }
+                log("before track.test_setSourceMuted(false)");
+                track.test_setSourceMuted(false);
+                log("after track.test_setSourceMuted(false)");
+            }
+
+            shouldBeEqual('stream.getVideoTracks().length', '1');
+            track = stream.getVideoTracks()[0];
+            track2 = track.clone();
+
+            track.onmute = function () {
+                log("mute event on track");
+                shouldBeEqual('track.readyState', '"live"');
+                shouldBeEqual('track.muted', 'true');
+                maybeUnmute();
+            };
+
+            track.onunmute = function () {
+                log("unmute event on track");
+                shouldBeEqual('track.readyState', '"live"');
+                shouldBeEqual('track.muted', 'false');
+                maybeDone();
+            };
+
+            track2.onmute = function () {
+                log("mute event on track2");
+                shouldBeEqual('track2.readyState', '"live"');
+                shouldBeEqual('track2.muted', 'true');
+                maybeUnmute();
+            };
+
+            track2.onunmute = function () {
+                log("unmute event on track2");
+                shouldBeEqual('track2.readyState', '"live"');
+                shouldBeEqual('track2.muted', 'false');
+                maybeDone();
+            };
+
+            log("before track.test_setSourceMuted(true)");
+            track.test_setSourceMuted(true);
+            log("after track.test_setSourceMuted(true)");
+
+            shouldBeEqual('track.muted', 'false');
+            shouldBeEqual('track2.muted', 'false');
         });
     };
 
@@ -738,6 +919,10 @@ Default getUserMedia():
 <input type="button" id="test_track_stop_event_but" value="Test MediaStreamTrack ended event">
 <input type="button" id="test_stream_active_but" value="Test MediaStream.active">
 <input type="button" id="self_view_test_but" value="Self-view test (manual)">
+<input type="button" id="test_source_stop_ext_but" value="Test source stop (ext)">
+<input type="button" id="test_source_stop2_ext_but" value="Test source stop + stop() (ext)">
+<input type="button" id="test_ua_add_track_ext_but" value="Test ua add track (ext)">
+<input type="button" id="test_source_muted_ext_but" value="Test source muted (ext)">
 <hr>
 <input type="button" id="create_pc_but" value="Create RTCPeerConnection (creates pc) (manual)">
 <input type="button" id="pc_configuration_but" value="Test RTCPeerConnection constructor and RTCConfiguration">
