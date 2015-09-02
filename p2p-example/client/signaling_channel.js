@@ -20,42 +20,46 @@ function SignalingChannel(sessionId) {
         return Math.random().toString(16).substr(2);
     };
 
-    var es = new EventSource("/stoc/" + sessionId + "/" + userId);
+    var ws = new WebSocket("ws://" + location.hostname + ":" + location.port, sessionId + "-" + userId);
 
-    es.onerror = function () {
-        es.close();
+    ws.onopen = function () {
     };
 
-    es.addEventListener("join", function (evt) {
-        var peerUserId = evt.data;
-        console.log("join: " + peerUserId);
-        var channel = new PeerChannel(peerUserId);
-        channels[peerUserId] = channel;
+    ws.onclose = function () {
+    };
 
-        es.addEventListener("user-" + peerUserId, userDataHandler, false);
-        fireEvent({ "type": "peer", "peer": channel }, listeners);
-    }, false);
+    ws.onerror = function () {
+        ws.close();
+    };
 
-    function userDataHandler(evt) {
-        var peerUserId = evt.type.substr(5); // discard "user-" part
-        var channel = channels[peerUserId];
-        if (channel)
-            channel.didGetData(evt.data);
-    }
+    ws.onmessage = function (evt) {
+        var parts = evt.data.split(">", 2);
+        var peerUserId = parts[0];
+        var data = parts[1];
 
-    es.addEventListener("leave", function (evt) {
-        var peerUserId = evt.data;
+        if (data == "join") {
+            console.log("join: " + peerUserId);
+            channels[peerUserId] = new PeerChannel(peerUserId);
+            fireEvent({ "type": "peer", "peer": channels[peerUserId] }, listeners);
 
-        es.removeEventListener("user-" + peerUserId, userDataHandler, false);
+        } else if (data == "leave") {
+            console.log("leave: " + peerUserId);
+            var channel = channels[peerUserId];
+            if (channel) {
+                channel.didLeave();
+                delete channels[peerUserId];
+            }
 
-        channels[peerUserId].didLeave();
-        delete channels[peerUserId];
-    }, false);
+        } else if (data == "sessionfull") {
+            fireEvent({"type": "sessionfull"}, listeners);
+            ws.close();
 
-    es.addEventListener("sessionfull", function () {
-        fireEvent({"type": "sessionfull"}, listeners);
-        es.close();
-    }, false);
+        } else {
+            var channel = channels[peerUserId];
+            if (channel)
+                channel.didGetData(data);
+        }
+    };
 
     function PeerChannel(peerUserId) {
         var listeners = {
@@ -74,10 +78,7 @@ function SignalingChannel(sessionId) {
         };
 
         this.send = function (message) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "/ctos/" + sessionId + "/" + userId + "/" + peerUserId);
-            xhr.setRequestHeader("Content-Type", "text/plain");
-            xhr.send(message);
+            ws.send(peerUserId + "<" + message);
         };
     }
 
