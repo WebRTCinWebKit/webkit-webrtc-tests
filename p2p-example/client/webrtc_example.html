@@ -149,7 +149,7 @@ function start(isInitiator) {
     };
 
     pc.ontrack = function (evt) {
-        var stream = new webkitMediaStream([evt.track]);
+        var stream = new MediaStream([evt.track]);
         remoteView.srcObject = stream;
     }
 
