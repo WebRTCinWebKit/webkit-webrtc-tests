@@ -156,7 +156,7 @@ function start(isInitiator) {
     pc.addStream(localStream);
 
     // the negotiationneeded event is not supported in Firefox
-    if ((isFirefox || isOwrWebKit) && isInitiator)
+    if (isFirefox && isInitiator)
         pc.onnegotiationneeded();
 }
 
