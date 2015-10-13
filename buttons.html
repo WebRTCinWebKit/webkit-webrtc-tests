@@ -36,10 +36,11 @@ window.onload = function () {
 
         promise.then(function (s) {
             stream = s;
-            shouldBeEqual('stream instanceof webkitMediaStream', 'true');
+            shouldBeEqual('stream instanceof MediaStream', 'true');
 
             shouldBeEqual('stream.getAudioTracks().length', '1');
             shouldBeEqual('stream.getVideoTracks().length', '1');
+            shouldBeEqual('stream.getTracks().length', '2');
         })
         .catch(function (e) {
             error = e;
@@ -50,10 +51,11 @@ window.onload = function () {
     document.querySelector("#legacy_gum_but").onclick = function (evt) {
         navigator.webkitGetUserMedia(options, function (s) {
             stream = s;
-            shouldBeEqual('stream instanceof webkitMediaStream', 'true');
+            shouldBeEqual('stream instanceof MediaStream', 'true');
 
             shouldBeEqual('stream.getAudioTracks().length', '1');
             shouldBeEqual('stream.getVideoTracks().length', '1');
+            shouldBeEqual('stream.getTracks().length', '2');
         }
         , function (e) {
             error = e;
