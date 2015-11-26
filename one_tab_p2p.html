@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+<head>
+<title>One tab p2p</title>
+
+<style type="text/css">
+    video { width: 240px; height: 160px; border: black 1px solid;}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+var isOwrWebKit = !!navigator.mediaDevices && !!self.webkitAudioPannerNode;
+var isFirefox = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
+if (isFirefox) {
+    window.webkitURL = window.URL;
+    navigator.webkitGetUserMedia = navigator.mozGetUserMedia;
+    window.webkitRTCPeerConnection = window.mozRTCPeerConnection;
+    window.RTCSessionDescription = window.mozRTCSessionDescription;
+    window.RTCIceCandidate = window.mozRTCIceCandidate;
+}
+
+var startButton;
+var pc1;
+var pc2;
+var localStream;
+
+// must use 'url' here since Firefox doesn't understand 'urls'
+var configuration = { "iceServers": [{ "url": "stun:mmt-stun.verkstad.net" }] };
+
+if (isOwrWebKit) {
+    configuration.iceServers[0].urls = configuration.iceServers[0].url;
+
+    webkitRTCPeerConnection.prototype.addStream = function (stream) {
+        this.addTrack(stream.getTracks()[0], stream);
+    }
+
+    // FXME: handle JSON stringifying this natively
+    RTCSessionDescription.prototype.toJSON = function () {
+        return {
+            "type": this.type,
+            "sdp": this.sdp
+        };
+    }
+
+    RTCIceCandidate.prototype.toJSON = function () {
+        return {
+            "candidate": this.candidate,
+            "sdpMid": this.sdpMid,
+            "sdpMLineIndex": this.sdpMLineIndex
+        };
+    }
+}
+
+window.onload = function () {
+    var startButton = document.getElementById("start_but");
+    var singleButton = document.getElementById("single_but");
+    var twoStepButton = document.getElementById("two_step_but");
+    var audioCheckBox = document.getElementById("audio_cb");
+    var videoCheckBox = document.getElementById("video_cb");
+
+    startButton.disabled = !navigator.webkitGetUserMedia;
+    startButton.onclick = function () {
+        audioCheckBox.disabled = videoCheckBox.disabled = true;
+        // get a local stream
+        navigator.webkitGetUserMedia({ "audio": audioCheckBox.checked,
+            "video": videoCheckBox.checked }, function (stream) {
+            localStream = stream;
+
+            startButton.disabled = true;
+            singleButton.disabled = false;
+            twoStepButton.disabled = false;
+        }, logError);
+    };
+
+    singleButton.onclick = function (evt) {
+        evt.target.disabled = true;
+        single();
+    }
+
+    twoStepButton.onclick = function (evt) {
+        evt.target.disabled = true;
+        twoStep(evt.target);
+    }
+}
+
+function single() {
+    commonSetup();
+
+    renderStream(localStream, document.querySelector("#self_view1"));
+    pc1.addStream(localStream);
+
+    pc1.createOffer(function (offer) {
+        pc1.setLocalDescription(offer, function () {
+            offerToPc2(pc1.localDescription);
+        }, logError);
+    }, logError);
+
+    function offerToPc2(offer) {
+        pc2.setRemoteDescription(offer, function () {
+        renderStream(localStream, document.querySelector("#self_view2"));
+            pc2.addStream(localStream);
+
+            pc2.createAnswer(function (answer) {
+                pc2.setLocalDescription(answer, function () {
+                    answerToPc1(pc2.localDescription);
+                }, logError);
+            }, logError);
+        }, logError);
+    }
+
+    function answerToPc1(answer) {
+        pc1.setRemoteDescription(answer, function () {
+            console.log("initiator got answer, O/A dialog completed");
+        }, logError);
+    }
+}
+
+function twoStep(continueButton) {
+    commonSetup();
+
+    renderStream(localStream, document.querySelector("#self_view1"));
+    pc1.addStream(localStream);
+
+    continueButton.onclick = function (evt) {
+        evt.target.value = evt.target.origValue;
+        evt.target.disabled = true;
+        renderStream(localStream, document.querySelector("#self_view2"));
+        pc2.addStream(localStream);
+        aStep(pc2, pc1);
+    }
+
+    aStep(pc1, pc2, continueButton);
+}
+
+function aStep(pcA, pcB, continueButton) {
+    pcA.createOffer(function (offer) {
+        pcA.setLocalDescription(offer, function () {
+            offerToPcB(pcA.localDescription);
+        }, logError);
+    }, logError);
+
+    function offerToPcB(offer) {
+        pcB.setRemoteDescription(offer, function () {
+            pcB.createAnswer(function (answer) {
+                pcB.setLocalDescription(answer, function () {
+                    answerToPcA(pcB.localDescription);
+                }, logError);
+            }, logError);
+        }, logError);
+    }
+
+    function answerToPcA(answer) {
+        pcA.setRemoteDescription(answer, function () {
+            console.log("initiator got answer, single way O/A dialog completed");
+
+            if (continueButton && continueButton.onclick) {
+                continueButton.origValue = continueButton.value;
+                continueButton.value += " (continue)";
+                continueButton.disabled = false;
+            }
+        }, logError);
+    }
+}
+
+function commonSetup() {
+    pc1 = new webkitRTCPeerConnection(configuration);
+    pc2 = new webkitRTCPeerConnection(configuration);
+
+    symetricSetup(pc1, "1", pc2);
+    symetricSetup(pc2, "2", pc1);
+}
+
+function symetricSetup(pc, num, other) {
+    pc.onicecandidate = function (evt) {
+        if (evt.candidate) {
+            logSignalling(evt.candidate, "pc" + num + ": outgoing");
+            other.addIceCandidate(evt.candidate);
+        }
+    };
+
+    pc.onaddstream = function (evt) {
+        console.log("pc" + num + " got remote stream");
+        renderStream(evt.stream, document.querySelector("#remote_view" + num));
+    };
+
+    pc.ontrack = function (evt) {
+        console.log("pc" + num + " got remote track");
+        var stream = new MediaStream([evt.track]);
+        renderStream(stream, document.querySelector("#remote_view" + num));
+    }
+}
+
+function logError(error) {
+    if (error) {
+        if (error.name || error.message)
+            log((error.name || "-") + ": " + (error.message || "-"));
+        else
+            log(error);
+    } else
+        log("Error (no error message)");
+}
+
+function logSignalling(msg, tag) {
+    if (msg.candidate)
+        log("=== " + tag + " candidate === (" + msg.candidate + ")");
+    else if (msg.sdp) {
+        log("=== " + tag + " " + msg.type + " ===");
+        msg.sdp.split("\n").forEach(log);
+        log("===");
+    }
+}
+
+function renderStream(stream, video) {
+    if (typeof video.srcObject != "undefined")
+        video.srcObject = stream;
+    else
+        video.src = URL.createObjectURL(stream);
+}
+
+function log(msg) {
+    log.div = log.div || document.getElementById("log_div");
+    log.div.appendChild(document.createTextNode(msg));
+    log.div.appendChild(document.createElement("br"));
+}
+
+</script>
+
+</head>
+<body>
+<h3>One tab p2p - Test different signaling schemas</h3>
+<input type="checkbox" id="audio_cb">Audio<br>
+<input type="checkbox" id="video_cb" checked>Video<br>
+<input type="button" id="start_but" value="Start">
+<input type="button" id="single_but" value="Single SDP dialog" disabled>
+<input type="button" id="two_step_but" value="Two-step SDP dialog" disabled>
+<br>
+
+<p>pc1 local/remote</p>
+<video id="self_view1" autoplay muted></video>
+<video id="remote_view1" autoplay></video>
+<br>
+<p>pc2 local/remote</p>
+<video id="self_view2" autoplay muted></video>
+<video id="remote_view2" autoplay></video>
+
+<div id="log_div"></div>
+</body>
+</html>
