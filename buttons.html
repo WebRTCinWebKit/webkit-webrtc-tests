@@ -843,7 +843,7 @@ function shouldThrow(expression) {
     try {
         eval(expression);
     } catch (e) {
-        log("PASS: '" + expression + "' did throw");
+        log("PASS: '" + expression + "' did throw: " + e);
         return;
     }
     reportError("FAIL: '" + expression + "' should have thrown");
@@ -853,7 +853,7 @@ function shouldNotThrow(expression) {
     try {
         eval(expression);
     } catch (e) {
-        reportError("FAIL: '" + expression + "' should not have thrown");
+        reportError("FAIL: '" + expression + "' should not have thrown:" + e);
         return;
     }
     log("PASS: '" + expression + "' did not throw");
