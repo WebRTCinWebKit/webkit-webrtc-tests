@@ -96,7 +96,7 @@ function single() {
 
     function offerToPc2(offer) {
         pc2.setRemoteDescription(offer, function () {
-        renderStream(localStream, document.querySelector("#self_view2"));
+            renderStream(localStream, document.querySelector("#self_view2"));
             pc2.addStream(localStream);
 
             pc2.createAnswer(function (answer) {
