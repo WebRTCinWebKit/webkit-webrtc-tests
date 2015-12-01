@@ -53,8 +53,10 @@ if (isOwrWebKit) {
 window.onload = function () {
     var startButton = document.getElementById("start_but");
     closeButton = document.getElementById("close_but");
-    var singleButton = document.getElementById("single_but");
-    var twoStepButton = document.getElementById("two_step_but");
+    var testButtons = {
+        "single": document.getElementById("single_but"),
+        "twoStep": document.getElementById("two_step_but")
+    };
     var audioCheckBox = document.getElementById("audio_cb");
     var videoCheckBox = document.getElementById("video_cb");
 
@@ -67,8 +69,7 @@ window.onload = function () {
             localStream = stream;
 
             startButton.disabled = true;
-            singleButton.disabled = false;
-            twoStepButton.disabled = false;
+            setTestButtonsDisabled(false);
         }, logError);
     };
 
@@ -78,18 +79,22 @@ window.onload = function () {
         pc1.close();
         pc2.close();
 
-        singleButton.disabled = false;
-        twoStepButton.disabled = false;
+        setTestButtonsDisabled(false);
     }
 
-    singleButton.onclick = function (evt) {
-        evt.target.disabled = true;
+    testButtons.single.onclick = function (evt) {
+        setTestButtonsDisabled(true);
         single();
     }
 
-    twoStepButton.onclick = function (evt) {
-        evt.target.disabled = true;
+    testButtons.twoStep.onclick = function (evt) {
+        setTestButtonsDisabled(true);
         twoStep(evt.target);
+    }
+
+    function setTestButtonsDisabled(isDisabled) {
+        for (var p in testButtons)
+            testButtons[p].disabled = isDisabled;
     }
 }
 
