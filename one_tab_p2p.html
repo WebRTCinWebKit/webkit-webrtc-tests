@@ -55,7 +55,8 @@ window.onload = function () {
     closeButton = document.getElementById("close_but");
     var testButtons = {
         "single": document.getElementById("single_but"),
-        "twoStep": document.getElementById("two_step_but")
+        "twoStep": document.getElementById("two_step_but"),
+        "singlePromise": document.getElementById("single_promise_but")
     };
     var audioCheckBox = document.getElementById("audio_cb");
     var videoCheckBox = document.getElementById("video_cb");
@@ -90,6 +91,11 @@ window.onload = function () {
     testButtons.twoStep.onclick = function (evt) {
         setTestButtonsDisabled(true);
         twoStep(evt.target);
+    }
+
+    testButtons.singlePromise.onclick = function (evt) {
+        setTestButtonsDisabled(true);
+        singlePromise();
     }
 
     function setTestButtonsDisabled(isDisabled) {
@@ -180,6 +186,38 @@ function aStep(pcA, pcB, continueButton) {
     }
 }
 
+function singlePromise() {
+    console.log("-> singlePromise()");
+    commonSetup();
+    var track = localStream.getVideoTracks()[0];
+
+    renderStream(localStream, document.querySelector("#self_view1"));
+    pc1.addTrack(track, localStream);
+
+    pc1.createOffer().then(function (offer) {
+        return pc1.setLocalDescription(offer);
+    })
+    .then(function () {
+        return pc2.setRemoteDescription(pc1.localDescription);
+    })
+    .then(function () {
+        renderStream(localStream, document.querySelector("#self_view2"));
+        pc2.addTrack(track, localStream);
+        return pc2.createAnswer();
+    })
+    .then(function (answer) {
+        return pc2.setLocalDescription(answer);
+    })
+    .then(function () {
+        return pc1.setRemoteDescription(pc2.localDescription);
+    })
+    .then(function () {
+        console.log("initiator got answer, O/A dialog completed");
+        closeButton.disabled = false;
+    })
+    .catch(logError);
+}
+
 function commonSetup() {
     pc1 = new webkitRTCPeerConnection(configuration);
     pc2 = new webkitRTCPeerConnection(configuration);
@@ -253,6 +291,8 @@ function log(msg) {
 <br>
 <input type="button" id="single_but" value="Single SDP dialog" disabled>
 <input type="button" id="two_step_but" value="Two-step SDP dialog" disabled>
+<br>
+<input type="button" id="single_promise_but" value="Single SDP dialog (promise API)" disabled>
 <br>
 
 <p>pc1 local/remote</p>
