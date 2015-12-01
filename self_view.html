@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+<title>Self-view</title>
+
+<style type="text/css">
+    video { width: 320px; height: 240px; border: black 1px solid;}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+var isOwrWebKit = !!navigator.mediaDevices && !!self.webkitAudioPannerNode;
+var isFirefox = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
+if (isFirefox) {
+    window.webkitURL = window.URL;
+    navigator.webkitGetUserMedia = navigator.mozGetUserMedia;
+    window.webkitRTCPeerConnection = window.mozRTCPeerConnection;
+    window.RTCSessionDescription = window.mozRTCSessionDescription;
+    window.RTCIceCandidate = window.mozRTCIceCandidate;
+}
+
+var selfView;
+
+window.onload = function () {
+    var autoplayCheckBox = document.querySelector("#autoplay_cb");
+    var pausedCheckBox = document.querySelector("#paused_cb");
+    var startButton = document.querySelector("#start_but");
+    var loadButton = document.querySelector("#load_but");
+    selfView = document.querySelector("#self_view");
+
+    pausedCheckBox.onchange = function () {
+        if (pausedCheckBox.checked)
+            selfView.pause();
+        else
+            selfView.play();
+    }
+
+    selfView.onpause = selfView.onplaying = function () {
+        pausedCheckBox.checked = selfView.paused;
+    }
+
+    startButton.onclick = function () {
+        navigator.webkitGetUserMedia({ "video": true }, function (stream) {
+            selfView.autoplay = autoplayCheckBox.checked;
+            pausedCheckBox.disabled = false;
+            pausedCheckBox.checked = !autoplayCheckBox.checked;
+            autoplayCheckBox.disabled = true;
+            renderStream(stream, selfView);
+            startButton.disabled = true;
+            loadButton.disabled = false;
+        }, logError);
+    };
+
+    loadButton.onclick = function () {
+        selfView.load();
+    }
+}
+
+function logError(error) {
+    if (error) {
+        if (error.name || error.message)
+            log((error.name || "-") + ": " + (error.message || "-"));
+        else
+            log(error);
+    } else
+        log("Error (no error message)");
+}
+
+function renderStream(stream, video) {
+    if (typeof video.srcObject != "undefined")
+        video.srcObject = stream;
+    else
+        video.src = URL.createObjectURL(stream);
+}
+
+function log(msg) {
+    log.div = log.div || document.getElementById("log_div");
+    log.div.appendChild(document.createTextNode(msg));
+    log.div.appendChild(document.createElement("br"));
+}
+
+</script>
+
+</head>
+<body>
+<h3>Self-view (pause, load and cleanup test)</h3>
+<input type="checkbox" id="autoplay_cb" checked>Autoplay<br>
+<input type="checkbox" id="paused_cb" disabled>Paused<br>
+<input type="button" id="start_but" value="Start Video">
+<input type="button" id="load_but" value="Load" disabled>
+<br>
+
+<video id="self_view" autoplay muted></video>
+
+<div id="log_div"></div>
+</body>
+</html>
