@@ -18,7 +18,7 @@ if (isFirefox) {
     window.RTCIceCandidate = window.mozRTCIceCandidate;
 }
 
-var startButton;
+var closeButton;
 var pc1;
 var pc2;
 var localStream;
@@ -52,6 +52,7 @@ if (isOwrWebKit) {
 
 window.onload = function () {
     var startButton = document.getElementById("start_but");
+    closeButton = document.getElementById("close_but");
     var singleButton = document.getElementById("single_but");
     var twoStepButton = document.getElementById("two_step_but");
     var audioCheckBox = document.getElementById("audio_cb");
@@ -70,6 +71,16 @@ window.onload = function () {
             twoStepButton.disabled = false;
         }, logError);
     };
+
+    closeButton.onclick = function (evt) {
+        evt.target.disabled = true;
+        console.log("closing");
+        pc1.close();
+        pc2.close();
+
+        singleButton.disabled = false;
+        twoStepButton.disabled = false;
+    }
 
     singleButton.onclick = function (evt) {
         evt.target.disabled = true;
@@ -110,6 +121,7 @@ function single() {
     function answerToPc1(answer) {
         pc1.setRemoteDescription(answer, function () {
             console.log("initiator got answer, O/A dialog completed");
+            closeButton.disabled = false;
         }, logError);
     }
 }
@@ -157,6 +169,8 @@ function aStep(pcA, pcB, continueButton) {
                 continueButton.value += " (continue)";
                 continueButton.disabled = false;
             }
+
+            closeButton.disabled = false;
         }, logError);
     }
 }
@@ -230,6 +244,8 @@ function log(msg) {
 <input type="checkbox" id="audio_cb">Audio<br>
 <input type="checkbox" id="video_cb" checked>Video<br>
 <input type="button" id="start_but" value="Start">
+<input type="button" id="close_but" value="Close Connections" disabled>
+<br>
 <input type="button" id="single_but" value="Single SDP dialog" disabled>
 <input type="button" id="two_step_but" value="Two-step SDP dialog" disabled>
 <br>
