@@ -55,7 +55,8 @@ window.onload = function () {
     closeButton = document.getElementById("close_but");
     var testButtons = {
         "single": document.getElementById("single_but"),
-        "twoStep": document.getElementById("two_step_but"),
+        "media1to2": document.getElementById("media_1_2_but"),
+        "media2to1": document.getElementById("media_2_1_but"),
         "singlePromise": document.getElementById("single_promise_but")
     };
     var audioCheckBox = document.getElementById("audio_cb");
@@ -79,6 +80,8 @@ window.onload = function () {
         console.log("closing");
         pc1.close();
         pc2.close();
+        pc1 = null;
+        pc2 = null;
 
         setTestButtonsDisabled(false);
     }
@@ -88,9 +91,14 @@ window.onload = function () {
         single();
     }
 
-    testButtons.twoStep.onclick = function (evt) {
+    testButtons.media1to2.onclick = function (evt) {
         setTestButtonsDisabled(true);
-        twoStep(evt.target);
+        media1to2(testButtons.media2to1);
+    }
+
+    testButtons.media2to1.onclick = function (evt) {
+        setTestButtonsDisabled(true);
+        media2to1(testButtons.media1to2);
     }
 
     testButtons.singlePromise.onclick = function (evt) {
@@ -137,21 +145,24 @@ function single() {
     }
 }
 
-function twoStep(continueButton) {
-    commonSetup();
+function media1to2(continueButton) {
+    if (!pc1)
+        commonSetup();
 
     renderStream(localStream, document.querySelector("#self_view1"));
     pc1.addStream(localStream);
 
-    continueButton.onclick = function (evt) {
-        evt.target.value = evt.target.origValue;
-        evt.target.disabled = true;
-        renderStream(localStream, document.querySelector("#self_view2"));
-        pc2.addStream(localStream);
-        aStep(pc2, pc1);
-    }
+    aStep(pc1, pc2, continueButton)
+}
 
-    aStep(pc1, pc2, continueButton);
+function media2to1(continueButton) {
+    if (!pc1)
+        commonSetup();
+
+    renderStream(localStream, document.querySelector("#self_view2"));
+    pc2.addStream(localStream);
+
+    aStep(pc2, pc1, continueButton)
 }
 
 function aStep(pcA, pcB, continueButton) {
@@ -174,13 +185,7 @@ function aStep(pcA, pcB, continueButton) {
     function answerToPcA(answer) {
         pcA.setRemoteDescription(answer, function () {
             console.log("initiator got answer, single way O/A dialog completed");
-
-            if (continueButton && continueButton.onclick) {
-                continueButton.origValue = continueButton.value;
-                continueButton.value += " (continue)";
-                continueButton.disabled = false;
-            }
-
+            continueButton.disabled = false;
             closeButton.disabled = false;
         }, logError);
     }
@@ -290,7 +295,8 @@ function log(msg) {
 <input type="button" id="close_but" value="Close Connections" disabled>
 <br>
 <input type="button" id="single_but" value="Single SDP dialog" disabled>
-<input type="button" id="two_step_but" value="Two-step SDP dialog" disabled>
+<input type="button" id="media_1_2_but" value="Media 1 to 2" disabled>
+<input type="button" id="media_2_1_but" value="Media 2 to 1" disabled>
 <br>
 <input type="button" id="single_promise_but" value="Single SDP dialog (promise API)" disabled>
 <br>
