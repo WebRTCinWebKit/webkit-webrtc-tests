@@ -1,9 +1,9 @@
 ## webkit-webrtc-tests
 Repo to share simple tests
 
-* Buttons Test: http://webrtcinwebkit.github.io/webkit-webrtc-tests/buttons.html
-* One tab p2p: http://webrtcinwebkit.github.io/webkit-webrtc-tests/one_tab_p2p.html
-* Self view: http://webrtcinwebkit.github.io/webkit-webrtc-tests/self_view.html
+* Buttons Test: https://webrtcinwebkit.github.io/webkit-webrtc-tests/buttons.html
+* One tab p2p: https://webrtcinwebkit.github.io/webkit-webrtc-tests/one_tab_p2p.html
+* Self view: https://webrtcinwebkit.github.io/webkit-webrtc-tests/self_view.html
 
 ### Peer-2-peer Example
 
