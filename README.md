@@ -5,7 +5,7 @@ Repo to share simple tests
 * One tab p2p: https://webrtcinwebkit.github.io/webkit-webrtc-tests/one_tab_p2p.html
 * Self view: https://webrtcinwebkit.github.io/webkit-webrtc-tests/self_view.html
 
-### Peer-2-peer Example
+### Peer-to-peer Example
 
 This test consists of a client app and a small server part that acts both as a signaling server, and a web server that hosts the client app at http://localhost:8080. You need node.js to run the server parts. This example is only tested with video between WebKitGTK+ MiniBrowser and Chrome at the moment.
 
