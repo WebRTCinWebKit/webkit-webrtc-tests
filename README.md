@@ -1,7 +1,9 @@
 ## webkit-webrtc-tests
 Repo to share simple tests
 
-Buttons Test: http://webrtcinwebkit.github.io/webkit-webrtc-tests/buttons.html
+* Buttons Test: http://webrtcinwebkit.github.io/webkit-webrtc-tests/buttons.html
+* One tab p2p: http://webrtcinwebkit.github.io/webkit-webrtc-tests/one_tab_p2p.html
+* Self view: http://webrtcinwebkit.github.io/webkit-webrtc-tests/self_view.html
 
 ### Peer-2-peer Example
 
@@ -12,9 +14,9 @@ Follow these steps to run the test:
 1. Build the WebRTC enabled WebKit available at \[1\] (see \[2\] for building instructions).
 2. Start the combined signaling and web server by running `node channel_server.js` from the p2p-example directory (this repo).
 3. Start the MiniBrowser: `Tools/Scripts/run-minibrowser --gtk --enable-media-stream=1 http://localhost:8080`.
-4. Star Chrome and point it to `http://localhost:8080`.
+4. Start Chrome and point it to `http://localhost:8080`.
 5. Click the join button in both browsers to join the defalut session ("test").
-6. Initiate the call from MiniBrowser by clicking the "Initiate Call" button.
+6. Initiate the call from one of the browsers by clicking the "Initiate Call" button.
 
 \[1\] https://github.com/WebRTCinWebKit/webkit
 
