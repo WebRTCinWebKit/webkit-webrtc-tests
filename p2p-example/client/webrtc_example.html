@@ -26,6 +26,7 @@ var signalingChannel;
 var pc;
 var peer;
 var localStream;
+var remoteCandidates = [];
 
 // must use 'url' here since Firefox doesn't understand 'urls'
 var configuration = { "iceServers": [{ "url": "stun:mmt-stun.verkstad.net" }] };
@@ -113,13 +114,14 @@ function handleMessage(evt) {
         var desc = new RTCSessionDescription(message.sdp);
         logSignalling(desc, "incoming");
         pc.setRemoteDescription(desc, function () {
+            processStoredCandidates();
             // if we received an offer, we need to create an answer
             if (pc.remoteDescription.type == "offer")
                 pc.createAnswer(localDescCreated, logError);
         }, logError);
     } else {
         logSignalling(message.candidate, "incoming");
-        pc.addIceCandidate(new RTCIceCandidate(message.candidate), function () {}, logError);
+        addRemoteCandidate(new RTCIceCandidate(message.candidate));
     }
 }
 
@@ -165,6 +167,26 @@ function localDescCreated(desc) {
         logSignalling(pc.localDescription, "outgoing");
         peer.send(JSON.stringify({ "sdp": pc.localDescription }));
     }, logError);
+}
+
+function addRemoteCandidate(candidate) {
+    if (!pc.remoteDescription) {
+        console.log("No remote descripton set, storing candidate");
+        remoteCandidates.push(candidate);
+        return;
+    }
+    pc.addIceCandidate(candidate, function () {}, logError);
+}
+
+function processStoredCandidates() {
+    if (!remoteCandidates.length)
+        return;
+
+    console.log("Adding " + remoteCandidates.length + " stored candidates");
+    remoteCandidates.forEach(function (candidate) {
+        pc.addIceCandidate(candidate, function () {}, logError);
+    });
+    remoteDescription = [];
 }
 
 function logError(error) {
