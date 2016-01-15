@@ -12,11 +12,12 @@ This test consists of a client app and a small server part that acts both as a s
 Follow these steps to run the test:
 
 1. Build the WebRTC enabled WebKit available at \[1\] (see \[2\] for building instructions).
-2. Start the combined signaling and web server by running `node channel_server.js` from the p2p-example directory (this repo).
-3. Start the MiniBrowser: `Tools/Scripts/run-minibrowser --gtk --enable-media-stream=1 http://localhost:8080`.
-4. Start Chrome and point it to `http://localhost:8080`.
-5. Click the join button in both browsers to join the defalut session ("test").
-6. Initiate the call from one of the browsers by clicking the "Initiate Call" button.
+2. Add a key and certificate locations to the channel_server.js file, or generate a self-signed one.
+3. Start the combined signaling and web server by running `node channel_server.js` from the p2p-example directory (this repo).
+4. Start the MiniBrowser: `Tools/Scripts/run-minibrowser --gtk --enable-media-stream=1 http://localhost:8080`.
+5. Start Chrome and point it to `http://localhost:8080`.
+6. Click the join button in both browsers to join the defalut session ("test").
+7. Initiate the call from one of the browsers by clicking the "Initiate Call" button.
 
 \[1\] https://github.com/WebRTCinWebKit/webkit
 

@@ -1,5 +1,5 @@
 var fs = require("fs");
-var http = require("http");
+var https = require("https");
 var path = require("path");
 
 var sessions = {};
@@ -13,7 +13,12 @@ var contentTypeMap = {
     ".js": "text/javascript"
 };
 
-var server = http.createServer(function (request, response) {
+var options = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem')
+};
+
+var server = https.createServer(options, function (request, response) {
     var headers = {
         "Cache-Control": "no-cache, no-store",
         "Pragma": "no-cache",
