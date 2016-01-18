@@ -1,5 +1,4 @@
 var fs = require("fs");
-var https = require("https");
 var path = require("path");
 
 var sessions = {};
@@ -13,12 +12,19 @@ var contentTypeMap = {
     ".js": "text/javascript"
 };
 
-var options = {
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem')
-};
+var server;
+if (process.argv[2] == "http")
+    server = require("http").createServer(hanleRequest);
+else {
+    var options = {
+        "key": fs.readFileSync("key.pem"),
+        "cert": fs.readFileSync("cert.pem")
+    };
+    server = require("https").createServer(options, hanleRequest);
+}
+server.listen(8080);
 
-var server = https.createServer(options, function (request, response) {
+function hanleRequest(request, response) {
     var headers = {
         "Cache-Control": "no-cache, no-store",
         "Pragma": "no-cache",
@@ -143,5 +149,4 @@ var server = https.createServer(options, function (request, response) {
         });
         readStream.pipe(response);
     });
-});
-server.listen(8080);
+}
