@@ -816,6 +816,86 @@ window.onload = function () {
 
         message = "end of function";
     }
+
+    document.querySelector("#pc_sdp_parse").onclick = function (evt) {
+        log("construct pc2");
+        pc2 = new webkitRTCPeerConnection({ "iceServers": [{ "urls": "stun:132.177.123.6" }] });
+
+        var sdpLines = {
+            "v": "v=0",
+            "o": "o=- 972521018 0 IN IP4 127.0.0.1",
+            "s": "s=-",
+            "t": "t=0 0",
+            "msid-sem": "a=msid-semantic:WMS 44b81d96-9d91-4657-a8c7-0d7340cde1ae",
+            "m": "m=video 9 UDP/TLS/RTP/SAVPF 100 120",
+            "c": "c=IN IP4 0.0.0.0",
+            "c-mux": "a=rtcp-mux",
+            "mode": "a=sendrecv",
+            "vp8": "a=rtpmap:100 VP8/90000",
+            "rtx": "a=rtpmap:120 RTX/90000",
+            "fmtp": "a=fmtp:120 apt=100;rtx-time=200",
+            "nack": "a=rtcp-fb:100 nack",
+            "nack-pli": "a=rtcp-fb:100 nack pli",
+            "ccm": "a=rtcp-fb:100 ccm fir",
+            "ssrc": "a=ssrc:701033602 cname:p6aLyWG93xkkRRyf",
+            "msid": "a=msid:44b81d96-9d91-4657-a8c7-0d7340cde1ae 082ec683-82af-4b57-acdf-9846f491f26a",
+            "ice-ufrag": "a=ice-ufrag:vfh+",
+            "ice-pwd": "a=ice-pwd:wA9kQtn/pZnZ5gaIP82t8g",
+
+            // "ice-cand": "a=candidate:1654867310 1 udp 2122260223 192.168.0.15 34553 typ host generation 0",
+
+            "fingerprint": "a=fingerprint:sha-256 71:ED:B8:ED:FF:30:28:E5:47:94:D3:0C:CD:87:56:10:11:9D:B9:0D:8B:B5:41:F2:1C:80:15:9D:13:27:B4:6E",
+            "setup": "a=setup:actpass"
+        };
+
+        function buildSdp(excludes) {
+            var sdp = "";
+            for (var p in sdpLines) {
+                if (!excludes || excludes.indexOf(p) == -1)
+                    sdp += sdpLines[p] + "\r\n";
+            }
+            return sdp;
+        }
+
+        function newDesc(excludes) {
+            return new RTCSessionDescription({
+                "type": "offer",
+                "sdp": buildSdp(excludes)
+            });
+        };
+
+        function unexpected() { reportError("Unexpected resolve in promise chain"); }
+
+        var lines = Object.keys(sdpLines);
+
+        function chain() {
+            var line = lines.shift();
+            if (!line) {
+                log("done");
+                return;
+            }
+
+            pc2.setLocalDescription(newDesc([ line ])).then(function () {
+                reportError("Unexpected resolve: " + line);
+                chain();
+            }, function (error) {
+                log("Expected error for missing " + line + " line: " + JSON.stringify(error));
+                chain();
+            });
+        }
+
+        function single() {
+            var desc = newDesc();
+            console.log("sdp: " + desc.sdp);
+
+            pc2.setLocalDescription(desc).then(unexpected, function (e) {
+                log("Expected error: " + JSON.stringify(e));
+            });
+        }
+
+        chain();
+        // single();
+    };
 };
 
 function shouldBeEqual(expression1, expression2) {
@@ -939,6 +1019,7 @@ Default getUserMedia():
 <input type="button" id="pc_add_candidate_test_but" value="Add candidate (needs pc) (manual)" disabled>
 <input type="button" id="pc_bad_candidate_test_but" value="Add bad candidate (needs pc) (manual)" disabled>
 <input type="button" id="pc_callback_bindings" value="Test RTCPeerConnection callback bindings">
+<input type="button" id="pc_sdp_parse" value="Test SDP parsing">
 <hr>
 
 <video id="self_view_video" autoplay style="width:160px; height:120px; border: 1px dashed black;"></video>
