@@ -82,6 +82,7 @@ window.onload = function () {
 
             callButton.onclick = function () {
                 start(true);
+                pc.addStream(localStream);
             };
 
             // another peer has joined our session
@@ -114,8 +115,10 @@ function handleMessage(evt) {
         pc.setRemoteDescription(desc, function () {
             processStoredCandidates();
             // if we received an offer, we need to create an answer
-            if (pc.remoteDescription.type == "offer")
+            if (pc.remoteDescription.type == "offer") {
+                pc.addStream(localStream);
                 pc.createAnswer(localDescCreated, logError);
+            }
         }, logError);
     } else {
         logSignalling(message.candidate, "incoming");
@@ -152,8 +155,6 @@ function start(isInitiator) {
         var stream = new MediaStream([evt.track]);
         remoteView.srcObject = stream;
     }
-
-    pc.addStream(localStream);
 
     // the negotiationneeded event is not supported in Firefox
     if (isFirefox && isInitiator)
