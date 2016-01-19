@@ -23,12 +23,9 @@ var pc1;
 var pc2;
 var localStream;
 
-// must use 'url' here since Firefox doesn't understand 'urls'
-var configuration = { "iceServers": [{ "url": "stun:mmt-stun.verkstad.net" }] };
+var configuration = { "iceServers": [{ "urls": "stun:mmt-stun.verkstad.net" }] };
 
 if (isOwrWebKit) {
-    configuration.iceServers[0].urls = configuration.iceServers[0].url;
-
     webkitRTCPeerConnection.prototype.addStream = function (stream) {
         this.addTrack(stream.getTracks()[0], stream);
     }
