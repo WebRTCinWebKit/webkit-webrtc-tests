@@ -6,6 +6,7 @@ function SignalingChannel(sessionId) {
     if (!sessionId)
         sessionId = location.hash = location.hash.substr(1) || createId();
     userId = createId();
+    this.userId = userId;
 
     var channels = {};
 
@@ -64,6 +65,8 @@ function SignalingChannel(sessionId) {
         };
         for (var name in listeners)
             Object.defineProperty(this, name, createEventListenerDescriptor(name, listeners));
+
+        this.userId = peerUserId;
 
         this.didGetData = function (data) {
             fireEvent({"type": "message", "data": data }, listeners);

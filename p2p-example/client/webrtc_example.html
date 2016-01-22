@@ -87,7 +87,7 @@ window.onload = function () {
 
             // another peer has joined our session
             signalingChannel.onpeer = function (evt) {
-                callButton.disabled = false;
+                //callButton.disabled = false;
 
                 peer = evt.peer;
                 peer.onmessage = handleMessage;
@@ -98,6 +98,9 @@ window.onload = function () {
                         pc.close();
                     pc = null;
                 };
+
+                if (signalingChannel.userId > peer.userId)
+                    callButton.onclick();
             };
         }, logError);
     };
