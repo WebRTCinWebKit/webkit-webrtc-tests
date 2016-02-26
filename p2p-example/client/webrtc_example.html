@@ -28,8 +28,18 @@ var peer;
 var localStream;
 var remoteCandidates = [];
 
-// must use 'url' here since Firefox doesn't understand 'urls'
-var configuration = { "iceServers": [{ "urls": "stun:mmt-stun.verkstad.net" }] };
+var configuration = {
+  "iceServers": [
+        {
+            "urls": "stun:mmt-stun.verkstad.net"
+        },
+        {
+            "urls": "turn:mmt-turn.verkstad.net",
+            "username": "webrtc",
+            "credential": "secret"
+        }
+    ]
+};
 
 if (isOwrWebKit) {
     webkitRTCPeerConnection.prototype.addStream = function (stream) {
