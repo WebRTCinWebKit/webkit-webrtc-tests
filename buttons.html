@@ -653,7 +653,9 @@ window.onload = function () {
 
         function continueWithSetRemote() {
             log("continue with setRemote");
-            testBadDescs(pc2, "setRemoteDescription", offer, ["pranswer", "answer"]);
+            testBadDescs(pc2, "setRemoteDescription", offer, ["pranswer", "answer"], function () {
+                log("done");
+            });
         }
     };
 
