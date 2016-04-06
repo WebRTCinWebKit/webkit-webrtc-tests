@@ -8,7 +8,6 @@
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
-var isOwrWebKit = !!navigator.mediaDevices && !!self.webkitAudioPannerNode;
 var isFirefox = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
 if (isFirefox) {
     window.webkitURL = window.URL;
@@ -24,24 +23,6 @@ var pc2;
 var localStream;
 
 var configuration = { "iceServers": [{ "urls": "stun:mmt-stun.verkstad.net" }] };
-
-if (isOwrWebKit) {
-    // FXME: handle JSON stringifying this natively
-    RTCSessionDescription.prototype.toJSON = function () {
-        return {
-            "type": this.type,
-            "sdp": this.sdp
-        };
-    }
-
-    RTCIceCandidate.prototype.toJSON = function () {
-        return {
-            "candidate": this.candidate,
-            "sdpMid": this.sdpMid,
-            "sdpMLineIndex": this.sdpMLineIndex
-        };
-    }
-}
 
 window.onload = function () {
     var startButton = document.getElementById("start_but");
