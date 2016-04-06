@@ -162,9 +162,12 @@ function start(isInitiator) {
     };
 
     pc.ontrack = function (evt) {
-        var stream = new MediaStream([evt.track]);
-        remoteView.srcObject = stream;
-    }
+        evt.track.onunmute = function (evt) {
+            var track = evt.target;
+            var stream = new MediaStream([track]);
+            remoteView.srcObject = stream;
+        };
+    };
 
     // the negotiationneeded event is not supported in Firefox
     if (isFirefox && isInitiator)

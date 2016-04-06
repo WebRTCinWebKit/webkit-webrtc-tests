@@ -243,8 +243,11 @@ function symetricSetup(pc, num, other) {
 
     pc.ontrack = function (evt) {
         console.log("pc" + num + " got remote track");
-        var stream = new MediaStream([evt.track]);
-        renderStream(stream, document.querySelector("#remote_view" + num));
+        evt.track.onunmute = function (evt) {
+            var track = evt.target
+            var stream = new MediaStream([track]);
+            renderStream(stream, document.querySelector("#remote_view" + num));
+        };
     }
 }
 
