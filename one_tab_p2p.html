@@ -26,10 +26,6 @@ var localStream;
 var configuration = { "iceServers": [{ "urls": "stun:mmt-stun.verkstad.net" }] };
 
 if (isOwrWebKit) {
-    webkitRTCPeerConnection.prototype.addStream = function (stream) {
-        this.addTrack(stream.getTracks()[0], stream);
-    }
-
     // FXME: handle JSON stringifying this natively
     RTCSessionDescription.prototype.toJSON = function () {
         return {
