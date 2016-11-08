@@ -9,13 +9,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./signaling_channel.js" type="text/javascript"></script>
 <script>
-var isFirefox = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
+var isFirefox = window.mozRTCPeerConnection
 if (isFirefox) {
     window.webkitURL = window.URL;
     navigator.webkitGetUserMedia = navigator.mozGetUserMedia;
-    window.webkitRTCPeerConnection = window.mozRTCPeerConnection;
+    window.RTCPeerConnection = window.mozRTCPeerConnection;
     window.RTCSessionDescription = window.mozRTCSessionDescription;
     window.RTCIceCandidate = window.mozRTCIceCandidate;
+}
+
+var isChromium = !window.RTCPeerConnection
+if (isChromium) {
+    window.RTCPeerConnection = window.webkitRTCPeerConnection;
 }
 
 var remoteView;
@@ -116,7 +121,7 @@ function handleMessage(evt) {
 // call start() to initiate
 function start(isInitiator) {
     callButton.disabled = true;
-    pc = new webkitRTCPeerConnection(configuration);
+    pc = new RTCPeerConnection(configuration);
 
     // send any ice candidates to the other peer
     pc.onicecandidate = function (evt) {
