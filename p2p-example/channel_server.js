@@ -127,7 +127,12 @@ function hanleRequest(request, response) {
         return;
     }
 
-    var url = request.url.split("?", 1)[0];
+    var url;
+    if (request.url.indexOf('?') != -1)
+        url = request.url.split("?")[1];
+    else
+        url = request.url;
+
     var filePath = path.join(clientDir, url);
     if (filePath.indexOf(clientDir) != 0 || filePath == clientDir)
         filePath = path.join(clientDir, "/webrtc_example.html");
