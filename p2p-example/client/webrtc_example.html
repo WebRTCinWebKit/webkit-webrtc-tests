@@ -10,9 +10,10 @@
 <script src="./signaling_channel.js" type="text/javascript"></script>
 <script>
 var isFirefox = window.mozRTCPeerConnection
+
 if (isFirefox) {
     window.webkitURL = window.URL;
-    navigator.webkitGetUserMedia = navigator.mozGetUserMedia;
+    navigator.getUserMedia = navigator.mozGetUserMedia;
     window.RTCPeerConnection = window.mozRTCPeerConnection;
     window.RTCSessionDescription = window.mozRTCSessionDescription;
     window.RTCIceCandidate = window.mozRTCIceCandidate;
@@ -20,6 +21,7 @@ if (isFirefox) {
 
 var isChromium = !window.RTCPeerConnection
 if (isChromium) {
+    navigator.getUserMedia = navigator.webkitGetUserMedia;
     window.RTCPeerConnection = window.webkitRTCPeerConnection;
 }
 
@@ -53,11 +55,11 @@ window.onload = function () {
     var audioCheckBox = document.getElementById("audio_cb");
     var videoCheckBox = document.getElementById("video_cb");
 
-    joinButton.disabled = !navigator.webkitGetUserMedia;
+    joinButton.disabled = !navigator.getUserMedia;
     joinButton.onclick = function (evt) {
         audioCheckBox.disabled = videoCheckBox.disabled = true;
         // get a local stream
-        navigator.webkitGetUserMedia({ "audio": audioCheckBox.checked,
+        navigator.getUserMedia({ "audio": audioCheckBox.checked,
             "video": videoCheckBox.checked }, function (stream) {
             // .. show it in a self-view
             if (typeof selfView.srcObject != "undefined")
