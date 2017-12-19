@@ -23,6 +23,12 @@ if (isChromium) {
     window.RTCPeerConnection = window.webkitRTCPeerConnection;
 }
 
+var isWebKit = !navigator.webkitGetUserMedia;
+
+if (isWebKit) {
+   navigator.webkitGetUserMedia = navigator.mediaDevices.getUserMedia;
+}
+
 var remoteView;
 var callButton;
 
@@ -57,8 +63,8 @@ window.onload = function () {
     joinButton.onclick = function (evt) {
         audioCheckBox.disabled = videoCheckBox.disabled = true;
         // get a local stream
-        navigator.webkitGetUserMedia({ "audio": audioCheckBox.checked,
-            "video": videoCheckBox.checked }, function (stream) {
+        navigator.mediaDevices.getUserMedia({ "audio": audioCheckBox.checked,
+            "video": videoCheckBox.checked }).then(function (stream) {
             // .. show it in a self-view
             if (typeof selfView.srcObject != "undefined")
                 selfView.srcObject = stream;
@@ -74,7 +80,18 @@ window.onload = function () {
 
             callButton.onclick = function () {
                 start(true);
-                pc.addStream(localStream);
+                if (isWebKit) {
+                    localStream.getTracks().forEach(
+                        function(track) {
+                            pc.addTrack(
+                            track,
+                            localStream
+                           );
+                          }
+                     );
+                } else {
+                    pc.addStream(localStream);
+                }
             };
 
             // another peer has joined our session
@@ -91,8 +108,29 @@ window.onload = function () {
                     pc = null;
                 };
             };
-        }, logError);
-    };
+        }).catch(logError);
+      };
+}
+
+function setRemoteDescriptionSuccess() {
+    processStoredCandidates();
+    // if we received an offer, we need to create an answer
+    if (pc.remoteDescription.type == "offer") {
+        if (isWebKit) {
+            localStream.getTracks().forEach(
+               function(track) {
+                    pc.addTrack(
+                    track,
+                    localStream
+                   );
+                  }
+                );
+            pc.createAnswer().then(localDescCreatedWebKit).catch(logError);
+        } else {
+            pc.addStream(localStream);
+            pc.createAnswer(localDescCreated, logError);
+        }
+    }
 }
 
 // handle signaling messages received from the other peer
@@ -101,22 +139,43 @@ function handleMessage(evt) {
     if (message.sdp) {
         if (!pc)
             start(false);
-
         var desc = new RTCSessionDescription(message.sdp);
         logSignalling(desc, "incoming");
-        pc.setRemoteDescription(desc, function () {
-            processStoredCandidates();
-            // if we received an offer, we need to create an answer
-            if (pc.remoteDescription.type == "offer") {
-                pc.addStream(localStream);
-                pc.createAnswer(localDescCreated, logError);
-            }
-        }, logError);
+        if (isWebKit)
+            pc.setRemoteDescription(desc).then(setRemoteDescriptionSuccess).catch(logError);
+        else
+            pc.setRemoteDescription(desc, setRemoteDescriptionSuccess, logError);
     } else {
         logSignalling(message.candidate, "incoming");
         addRemoteCandidate(new RTCIceCandidate(message.candidate));
     }
 }
+
+// handle signaling messages received from the other peer
+function handleMessageWebKit(evt) {
+    var message = JSON.parse(evt.data);
+    if (message.sdp) {
+        if (!pc)
+            start(false);
+
+        var desc = new RTCSessionDescription(message.sdp);
+        logSignalling(desc, "incoming");
+        pc.setRemoteDescription(desc).then(function () {
+            processStoredCandidates();
+            // if we received an offer, we need to create an answer
+            if (pc.remoteDescription.type == "offer") {
+           };
+        }).catch(logError);
+    } else {
+        logSignalling(message.candidate, "incoming");
+        addRemoteCandidate(new RTCIceCandidate(message.candidate));
+    }
+}
+
+var offerOptions = {
+  offerToReceiveAudio: 1,
+  offerToReceiveVideo: 1
+};
 
 // call start() to initiate
 function start(isInitiator) {
@@ -134,18 +193,36 @@ function start(isInitiator) {
     // let the "negotiationneeded" event trigger offer generation
     pc.onnegotiationneeded = function () {
         // check signaling state here because Chrome dispatches negotiationeeded during negotiation
-        if (pc.signalingState == "stable")
-            pc.createOffer(localDescCreated, logError);
+        if (pc.signalingState == "stable") {
+        if (isWebKit)
+            pc.createOffer(offerOptions).then(localDescCreatedWebKit).catch(logError);
+        else
+           pc.createOffer(localDescCreated, logError);
+        };
     };
 
-    // once the remote stream arrives, show it in the remote video element
-    pc.onaddstream = function (evt) {
-        remoteView.src = URL.createObjectURL(evt.stream);
-    };
+
+    if (isWebKit) {
+        pc.ontrack = function (evt) {
+            remoteView.srcObject = evt.streams[0];
+        };
+    } else {
+        // once the remote stream arrives, show it in the remote video element
+        pc.onaddstream = function (evt) {
+            remoteView.src = URL.createObjectURL(evt.stream);
+         };
+    }
 
     // the negotiationneeded event is not supported in Firefox
     if (isFirefox && isInitiator)
         pc.onnegotiationneeded();
+}
+
+function localDescCreatedWebKit(desc) {
+    pc.setLocalDescription(desc).then(function () {
+        logSignalling(pc.localDescription, "outgoing");
+        peer.send(JSON.stringify({ "sdp": pc.localDescription }));
+    }).catch(logError);
 }
 
 function localDescCreated(desc) {
